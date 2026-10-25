@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, type KeyboardEvent } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Wallet, ArrowLeft } from "lucide-react";
 
@@ -48,7 +48,7 @@ const OTPVerification = () => {
     }
   };
 
-  const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (index: number, e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Backspace" && !otp[index] && index > 0) {
       inputRefs.current[index - 1]?.focus();
     }
@@ -111,7 +111,9 @@ const OTPVerification = () => {
           {otp.map((digit, index) => (
             <input 
               key={index} 
-              ref={(el) => (inputRefs.current[index] = el)}
+              ref={(el) => {
+                inputRefs.current[index] = el;
+              }}
               type="text" 
               inputMode="numeric"
               value={digit} 

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Wallet, CheckCircle2 } from "lucide-react";
 
@@ -11,7 +11,6 @@ const LoanLimit = () => {
   const navigate = useNavigate();
   const location = useLocation();
   
-  // ✅ Get the real phone number
   const phoneNumber = location.state?.phone || localStorage.getItem("userPhone") || "761234567";
 
   const interestRate = 0.09;
@@ -25,7 +24,6 @@ const LoanLimit = () => {
       const res = await fetch(`${API_URL}/api/apply-loan`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        // ✅ Now sends the actual user's phone number
         body: JSON.stringify({ phone_number: phoneNumber, amount, months }),
       });
       const data = await res.json();
