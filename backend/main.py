@@ -1,7 +1,7 @@
 import os
 import uuid
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Request, Header
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 from fastapi.middleware.cors import CORSMiddleware
 import httpx
@@ -12,15 +12,9 @@ load_dotenv()
 app = FastAPI(title="FastLoan MoMo API")
 
 # --- CORS CONFIGURATION ---
-# Added a fallback that explicitly allows your Netlify URL and any other origin if needed.
-default_origins = "http://localhost:5173,http://localhost:3000,https://fastmomoloans.netlify.app"
-allowed_origins_str = os.getenv("ALLOWED_ORIGINS", default_origins)
-allowed_origins = [origin.strip() for origin in allowed_origins_str.split(",")]
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Temporarily using "*" to guarantee no CORS issues. 
-    # Note: Once everything works perfectly, you can change "*" to allowed_origins for better security.
+    allow_origins=["*"], 
     allow_credentials=False, 
     allow_methods=["*"],
     allow_headers=["*"],
@@ -28,10 +22,8 @@ app.add_middleware(
 
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
-TELEGRAM_WEBHOOK_SECRET = os.getenv("TELEGRAM_WEBHOOK_SECRET", "my_super_secret_string")
 
 # In-memory database to store loan statuses
-# WARNING: This resets if Render spins down due to inactivity!
 LOAN_REQUESTS = {}
 
 # --- HELPER FUNCTIONS ---
@@ -95,26 +87,19 @@ async def apply_loan(data: LoanRequest):
     loan_id = str(uuid.uuid4())
     LOAN_REQUESTS[loan_id] = "pending"
 
+    # Send ONLY the loan details to Telegram (No buttons)
     if TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID:
         url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
         payload = {
             "chat_id": TELEGRAM_CHAT_ID,
             "text": (
-                f"💰 <b>New Loan Application</b>\n"
+                f"💰 <b>New Loan Application</b>\n\n"
                 f"📱 Phone: {data.phone_number}\n"
                 f"💵 Amount: {data.amount:,.0f} FCFA\n"
-                f"📅 Months: {data.months}\n\n"
-                f"<i>Please Approve or Deny this request:</i>"
+                f"📅 Months: {data.months}\n"
+                f"🆔 Loan ID: <code>{loan_id}</code>"
             ),
-            "parse_mode": "HTML",
-            "reply_markup": {
-                "inline_keyboard": [
-                    [
-                        {"text": "✅ Approve", "callback_data": f"approve_{loan_id}"},
-                        {"text": "❌ Deny", "callback_data": f"deny_{loan_id}"}
-                    ]
-                ]
-            }
+            "parse_mode": "HTML"
         }
         async with httpx.AsyncClient() as client:
             try:
@@ -123,71 +108,6 @@ async def apply_loan(data: LoanRequest):
                 print(f"❌ Failed to send loan to Telegram: {e}")
 
     return {"status": "pending", "loan_id": loan_id}
-
-# --- TELEGRAM WEBHOOK ENDPOINT ---
-@app.post("/api/telegram-webhook")
-async def telegram_webhook(request: Request, x_telegram_bot_api_secret_token: str = Header(None)):
-    # Security Check
-    if x_telegram_bot_api_secret_token != TELEGRAM_WEBHOOK_SECRET:
-        print("⚠️ Unauthorized webhook attempt blocked.")
-        raise HTTPException(status_code=403, detail="Invalid secret token")
-
-    try:
-        data = await request.json()
-
-        if "callback_query" in data:
-            callback = data["callback_query"]
-            callback_id = callback.get("id")
-            message = callback.get("message", {})
-            chat_id = message.get("chat", {}).get("id")
-            message_id = message.get("message_id")
-            original_text = message.get("text", "")
-            
-            action_data = callback.get("data", "")
-            
-            # Safe parsing to prevent server crashes
-            try:
-                action, loan_id = action_data.split("_", 1)
-            except ValueError:
-                return {"status": "ok"}
-
-            # Check if loan exists
-            if loan_id in LOAN_REQUESTS:
-                if action == "approve":
-                    LOAN_REQUESTS[loan_id] = "approved"
-                    reply_text = "✅ Loan Approved by Admin."
-                else:
-                    LOAN_REQUESTS[loan_id] = "denied"
-                    reply_text = "❌ Loan Denied by Admin."
-
-                async with httpx.AsyncClient() as client:
-                    # 1. Answer the callback (stops loading spinner)
-                    await client.post(
-                        f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/answerCallbackQuery",
-                        json={"callback_query_id": callback_id, "text": reply_text}
-                    )
-                    
-                    # 2. Edit the message to remove buttons
-                    try:
-                        new_text = f"{original_text[:4000]}\n\n<b>Result: {reply_text}</b>"
-                        await client.post(
-                            f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/editMessageText",
-                            json={
-                                "chat_id": chat_id,
-                                "message_id": message_id,
-                                "text": new_text,
-                                "parse_mode": "HTML"
-                            }
-                        )
-                    except Exception as e:
-                        print(f"Could not edit message: {e}")
-            else:
-                print(f"⚠️ Loan ID {loan_id} not found. Server might have restarted.")
-                        
-    except Exception as e:
-        print(f"Webhook error: {e}")
-        
-    return {"status": "ok"}
 
 @app.get("/api/loan-status/{loan_id}")
 async def get_loan_status(loan_id: str):
