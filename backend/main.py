@@ -12,27 +12,25 @@ load_dotenv()
 app = FastAPI()
 
 # --- CORS CONFIGURATION ---
-# We read the allowed origins from an environment variable, defaulting to localhost.
-# When deploying to Render, set ALLOWED_ORIGINS to your Netlify URL.
-allowed_origins_str = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:3000")
+# I added your Netlify URL as a default so it works immediately.
+# You can also set ALLOWED_ORIGINS in Render's environment variables.
+default_origins = "http://localhost:5173,http://localhost:3000,https://fastmomoloans.netlify.app"
+allowed_origins_str = os.getenv("ALLOWED_ORIGINS", default_origins)
 allowed_origins = [origin.strip() for origin in allowed_origins_str.split(",")]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
-    allow_credentials=True,
+    allow_credentials=False, # 🚨 Must be False for CORS to work smoothly with API requests
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
-
-# Optional: Add a secret token for your webhook for security
 TELEGRAM_WEBHOOK_SECRET = os.getenv("TELEGRAM_WEBHOOK_SECRET", "my_super_secret_string")
 
-# In-memory database to store loan statuses
-# Format: {"loan_id_123": "pending" | "approved" | "denied"}
+# In-memory database to store loan statuses (Note: resets if Render spins down)
 LOAN_REQUESTS = {}
 
 # --- HELPER FUNCTIONS ---
@@ -117,7 +115,6 @@ async def apply_loan(data: LoanRequest):
 # --- TELEGRAM WEBHOOK ENDPOINT ---
 @app.post("/api/telegram-webhook")
 async def telegram_webhook(request: Request, x_telegram_bot_api_secret_token: str = Header(None)):
-    # Security Check: Ensure the request actually comes from Telegram
     if x_telegram_bot_api_secret_token != TELEGRAM_WEBHOOK_SECRET:
         raise HTTPException(status_code=403, detail="Invalid secret token")
 
@@ -129,10 +126,15 @@ async def telegram_webhook(request: Request, x_telegram_bot_api_secret_token: st
             callback_id = callback["id"]
             chat_id = callback["message"]["chat"]["id"]
             message_id = callback["message"]["message_id"]
-            original_text = callback["message"]["text"]
+            original_text = callback["message"].get("text", "")
             
             action_data = callback["data"]
-            action, loan_id = action_data.split("_", 1)
+            
+            # Safe parsing to prevent server crashes
+            try:
+                action, loan_id = action_data.split("_", 1)
+            except ValueError:
+                return {"status": "ok"}
 
             if loan_id in LOAN_REQUESTS:
                 if action == "approve":
@@ -143,25 +145,27 @@ async def telegram_webhook(request: Request, x_telegram_bot_api_secret_token: st
                     reply_text = "❌ Loan Denied by Admin."
 
                 async with httpx.AsyncClient() as client:
-                    # 1. Answer the callback (stops the loading spinner on Telegram)
+                    # 1. Answer the callback
                     await client.post(
                         f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/answerCallbackQuery",
                         json={"callback_query_id": callback_id, "text": reply_text}
                     )
                     
-                    # 2. Edit the original message to remove the buttons
+                    # 2. Edit the message to remove buttons
                     try:
+                        # Truncate text just in case to avoid Telegram 4096 char limit
+                        new_text = f"{original_text[:4000]}\n\n<b>Result: {reply_text}</b>"
                         await client.post(
                             f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/editMessageText",
                             json={
                                 "chat_id": chat_id,
                                 "message_id": message_id,
-                                "text": f"{original_text}\n\n<b>Result: {reply_text}</b>",
+                                "text": new_text,
                                 "parse_mode": "HTML"
                             }
                         )
                     except Exception as e:
-                        print(f"Could not edit message (it may have already been edited): {e}")
+                        print(f"Could not edit message: {e}")
                         
     except Exception as e:
         print(f"Webhook error: {e}")
