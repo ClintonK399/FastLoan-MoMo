@@ -1,5 +1,6 @@
 :root {
-  --primary-yellow: #FCE176;
+  --primary-yellow: #FFD700;
+  /* Pure Bright Yellow */
   --button-yellow: #F5B800;
   --text-dark: #111827;
   --text-gray: #4B5563;
@@ -35,7 +36,7 @@ body {
   flex: 1;
   border-radius: 32px 32px 0 0;
   padding: 24px;
-  box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.1);
   margin-top: 16px;
   position: relative;
 }
@@ -215,7 +216,7 @@ body {
 }
 
 .loan-value {
-  font-size: 48px;
+  font-size: 42px;
   font-weight: 900;
   color: var(--text-dark);
   line-height: 1;

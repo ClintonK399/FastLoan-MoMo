@@ -11,17 +11,17 @@ const OTPVerification = () => {
   const navigate = useNavigate();
   const location = useLocation();
   
-  const phoneNumber = location.state?.phone || localStorage.getItem("userPhone") || "761234567";
+  const phoneNumber = location.state?.phone || localStorage.getItem("userPhone") || "0123456789";
 
   const formatPhone = (num: string) => {
     let clean = num.replace(/\D/g, ""); 
-    if (clean.startsWith("268")) {
+    if (clean.startsWith("229")) {
       clean = clean.substring(3);
     }
-    if (clean.length >= 8) {
-      return `+268 ${clean.substring(0, 2)} ••••${clean.slice(-3)}`;
+    if (clean.length === 10) {
+      return `+229 ${clean.substring(0, 2)} ••••${clean.slice(-2)}`;
     }
-    return `+268 ${clean}`;
+    return `+229 ${clean}`;
   };
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -93,18 +93,18 @@ const OTPVerification = () => {
         <h1 className="header-title">
           FastLoan<span>MoMo</span>
         </h1>
-        <p className="header-subtitle">Instant mobile money loans</p>
+        <p className="header-subtitle">Prêts mobiles instantanés</p>
       </div>
 
       <div className="main-card">
         <button onClick={() => navigate(-1)} className="btn-back" style={{ color: '#6B7280', fontWeight: 500, display: 'flex', alignItems: 'center' }}>
-          <ArrowLeft size={18} style={{ marginRight: '6px' }} /> Back
+          <ArrowLeft size={18} style={{ marginRight: '6px' }} /> Retour
         </button>
         
-        <h2 className="title" style={{ fontSize: '28px', marginBottom: '12px' }}>Verify your number</h2>
+        <h2 className="title" style={{ fontSize: '28px', marginBottom: '12px' }}>Vérifiez votre numéro</h2>
         
         <p className="subtitle" style={{ lineHeight: '1.6', color: '#4B5563', marginBottom: '32px' }}>
-          We sent a 4-digit code to <span className="bold">{formatPhone(phoneNumber)}</span>. Enter it below to continue.
+          Nous avons envoyé un code à 4 chiffres au <span className="bold">{formatPhone(phoneNumber)}</span>. Entrez-le ci-dessous pour continuer.
         </p>
         
         <div className="otp-container">
@@ -149,11 +149,11 @@ const OTPVerification = () => {
             marginBottom: '24px'
           }}
         >
-          Verify & sign in
+          Vérifier & se connecter
         </button>
         
         <p className="helper-text" style={{ textAlign: 'center', marginTop: '16px', fontSize: '15px', color: '#6B7280' }}>
-          Didn't get the code?{" "}
+          Vous n'avez pas reçu le code ?{" "}
           <span 
             onClick={handleResend}
             style={{ 
@@ -163,13 +163,13 @@ const OTPVerification = () => {
               textDecoration: timeLeft === 0 ? 'underline' : 'none'
             }}
           >
-            {isResending ? "Sending..." : timeLeft > 0 ? `Resend in ${timeLeft}s` : "Resend code"}
+            {isResending ? "Envoi..." : timeLeft > 0 ? `Renvoyer dans ${timeLeft}s` : "Renvoyer le code"}
           </span>
         </p>
       </div>
 
-      <p style={{ textAlign: 'center', fontSize: '13px', color: '#4B5563', marginTop: '24px', padding: '0 20px 40px' }}>
-        By continuing you agree to our Terms and Privacy Policy.
+      <p style={{ textAlign: 'center', fontSize: '13px', color: '#111827', marginTop: '24px', padding: '0 20px 40px', fontWeight: 500 }}>
+        En continuant, vous acceptez nos Conditions et notre Politique de Confidentialité.
       </p>
     </div>
   );

