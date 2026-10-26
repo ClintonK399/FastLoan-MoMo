@@ -2,8 +2,8 @@ import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { Wallet, Eye, Lock, ShieldCheck } from "lucide-react";
 
-// ✅ FIXED: Uses environment variable, falls back to localhost
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
+// ⚠️ REPLACE THIS WITH YOUR ACTUAL RENDER URL
+const API_URL = "https://YOUR-RENDER-URL.onrender.com";
 
 const Login = () => {
   const [phone, setPhone] = useState("");
@@ -19,7 +19,6 @@ const Login = () => {
     localStorage.setItem("userPhone", phone);
 
     try {
-      // ✅ FIXED: Removed the extra /api/
       await fetch(`${API_URL}/api/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
