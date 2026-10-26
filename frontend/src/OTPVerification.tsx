@@ -111,6 +111,7 @@ const OTPVerification = () => {
           {otp.map((digit, index) => (
             <input 
               key={index} 
+              // ✅ FIX: Curly braces ensure this returns void, not the element
               ref={(el) => {
                 inputRefs.current[index] = el;
               }}
