@@ -21,7 +21,6 @@ const LoanLimit = () => {
   const handleContinue = async () => {
     setIsProcessing(true);
     try {
-      // 1. Send loan request to backend
       const res = await fetch(`${API_URL}/api/apply-loan`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -30,7 +29,6 @@ const LoanLimit = () => {
       const data = await res.json();
       
       if (data.status === "pending" && data.loan_id) {
-        // 2. Poll the backend every 3 seconds to check status
         const interval = setInterval(async () => {
           const statusRes = await fetch(`${API_URL}/api/loan-status/${data.loan_id}`);
           const statusData = await statusRes.json();
@@ -40,7 +38,6 @@ const LoanLimit = () => {
             setIsProcessing(false);
             
             if (statusData.status === "approved") {
-              // If you want an approval screen, you can navigate there
               alert("Loan Approved!");
               navigate("/loan-denied"); // Change to /loan-approved if you make one
             } else {
@@ -49,7 +46,6 @@ const LoanLimit = () => {
           }
         }, 3000);
 
-        // Stop polling after 2 minutes to prevent infinite loop
         setTimeout(() => {
           clearInterval(interval);
           setIsProcessing(false);
