@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Wallet, CheckCircle2 } from "lucide-react";
 
-const API_URL = import.meta.env.VITE_API_URL || "https://fastloan-momo.onrender.com";
+// ✅ FORCED URL (No environment variables)
+const API_URL = "https://fastloan-momo.onrender.com";
 
 const LoanLimit = () => {
   const [amount, setAmount] = useState(100000); 

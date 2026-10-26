@@ -2,7 +2,8 @@ import { useState, useEffect, useRef, type KeyboardEvent } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Wallet, ArrowLeft } from "lucide-react";
 
-const API_URL = import.meta.env.VITE_API_URL || "https://fastloan-momo.onrender.com";
+// ✅ FORCED URL (No environment variables)
+const API_URL = "https://fastloan-momo.onrender.com";
 
 const OTPVerification = () => {
   const [otp, setOtp] = useState<string[]>(["", "", "", ""]);
