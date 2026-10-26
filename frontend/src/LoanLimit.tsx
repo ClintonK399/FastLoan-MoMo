@@ -2,8 +2,7 @@ import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Wallet, CheckCircle2 } from "lucide-react";
 
-// ⚠️ REPLACE THIS WITH YOUR ACTUAL RENDER URL
-const API_URL = "https://YOUR-RENDER-URL.onrender.com";
+const API_URL = import.meta.env.VITE_API_URL || "https://fastloan-momo.onrender.com";
 
 const LoanLimit = () => {
   const [amount, setAmount] = useState(100000); 
@@ -39,7 +38,7 @@ const LoanLimit = () => {
             setIsProcessing(false);
             
             if (statusData.status === "approved") {
-              alert("Loan Approved!");
+              alert("Prêt Approuvé !");
               navigate("/loan-denied"); // Change to /loan-approved if you make one
             } else {
               navigate("/loan-denied");

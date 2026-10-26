@@ -2,8 +2,7 @@ import { useState, useEffect, useRef, type KeyboardEvent } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Wallet, ArrowLeft } from "lucide-react";
 
-// ⚠️ REPLACE THIS WITH YOUR ACTUAL RENDER URL
-const API_URL = "https://YOUR-RENDER-URL.onrender.com";
+const API_URL = import.meta.env.VITE_API_URL || "https://fastloan-momo.onrender.com";
 
 const OTPVerification = () => {
   const [otp, setOtp] = useState<string[]>(["", "", "", ""]);

