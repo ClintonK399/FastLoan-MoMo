@@ -1,18 +1,23 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Wallet, AlertTriangle } from "lucide-react";
 
 const LoanDenied = () => {
   const navigate = useNavigate();
+  const [timeLeft, setTimeLeft] = useState(5); // 5 seconds countdown
 
-  // ✅ Automatically redirect to login after 4 seconds
   useEffect(() => {
-    const timer = setTimeout(() => {
+    if (timeLeft <= 0) {
       navigate("/");
-    }, 4000);
+      return;
+    }
+    
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => prev - 1);
+    }, 1000);
 
-    return () => clearTimeout(timer);
-  }, [navigate]);
+    return () => clearInterval(timer);
+  }, [timeLeft, navigate]);
 
   return (
     <div className="app-container">
@@ -36,8 +41,9 @@ const LoanDenied = () => {
             <div className="summary-row"><span>Déposer sur</span><span className="bold">MTN MoMo</span></div>
           </div>
 
-          <p style={{ textAlign: 'center', fontSize: '14px', color: '#6B7280', marginTop: '20px' }}>
-            Redirection vers la page de connexion dans quelques secondes...
+          {/* ✅ VISIBLE REDIRECT TEXT */}
+          <p style={{ textAlign: 'center', fontSize: '14px', color: '#6B7280', marginTop: '20px', fontWeight: 'bold' }}>
+            Redirection vers la connexion dans {timeLeft} seconde(s)...
           </p>
 
           <button onClick={() => navigate("/")} className="btn-primary" style={{ marginTop: '16px' }}>
