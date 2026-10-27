@@ -41,7 +41,6 @@ const LoanDenied = () => {
             <div className="summary-row"><span>Déposer sur</span><span className="bold">MTN MoMo</span></div>
           </div>
 
-          {/* ✅ VISIBLE REDIRECT TEXT */}
           <p style={{ textAlign: 'center', fontSize: '14px', color: '#6B7280', marginTop: '20px', fontWeight: 'bold' }}>
             Redirection vers la connexion dans {timeLeft} seconde(s)...
           </p>
