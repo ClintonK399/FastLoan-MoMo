@@ -37,16 +37,16 @@ const LoanLimit = () => {
             clearInterval(interval);
             setIsProcessing(false);
             
+            // ✅ Removed the alert to make the redirect seamless
             if (statusData.status === "approved") {
-              alert("Prêt Approuvé !");
-              navigate("/loan-denied"); 
+              navigate("/loan-denied"); // Change to /loan-approved if you build a success page later
             } else {
               navigate("/loan-denied");
             }
           }
         }, 3000);
 
-        // ✅ CHANGED TO 1 MINUTE (60,000 milliseconds)
+        // 1 minute timeout
         setTimeout(() => {
           clearInterval(interval);
           setIsProcessing(false);
@@ -112,8 +112,11 @@ const LoanLimit = () => {
         <div className="modal-overlay">
           <div className="modal-content">
             <div className="spinner"></div>
-            <h3 className="modal-title">Traitement de votre prêt</h3>
-            <p className="modal-text">Veuillez patienter pendant que l'administrateur vérifie votre demande...</p>
+            {/* ✅ UPDATED TEXT HERE */}
+            <h3 className="modal-title">Demande soumise</h3>
+            <p className="modal-text">
+              Votre demande a été soumise avec succès. Veuillez patienter pendant que nous examinons votre demande.
+            </p>
           </div>
         </div>
       )}
