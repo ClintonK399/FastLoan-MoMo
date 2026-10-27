@@ -4,7 +4,7 @@ import { Wallet, AlertTriangle } from "lucide-react";
 
 const LoanDenied = () => {
   const navigate = useNavigate();
-  const [timeLeft, setTimeLeft] = useState(5); // 5 seconds countdown
+  const [timeLeft, setTimeLeft] = useState(5); 
 
   useEffect(() => {
     if (timeLeft <= 0) {
@@ -33,7 +33,7 @@ const LoanDenied = () => {
           
           <h2 className="title">Demande refusée</h2>
           <p className="subtitle">
-            Malheureusement, nous ne pouvons pas approuver votre prêt pour le moment. Veuillez vous assurer que vous répondez aux exigences minimales.
+            Malheureusement, nous ne pouvons pas approuver votre prêt pour le moment.
           </p>
           
           <div className="error-details">

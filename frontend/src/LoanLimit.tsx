@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Wallet, CheckCircle2 } from "lucide-react";
 
@@ -10,6 +10,7 @@ const LoanLimit = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
   
   const phoneNumber = location.state?.phone || localStorage.getItem("userPhone") || "0123456789";
 
@@ -20,12 +21,14 @@ const LoanLimit = () => {
 
   const handleContinue = async () => {
     setIsProcessing(true);
+    console.log("⏳ Timer started for 10 seconds...");
 
-    // ✅ Set an invisible 60-second timer to auto-deny
-    const timeoutId = setTimeout(() => {
+    // ✅ CHANGED TO 10 SECONDS FOR FAST TESTING (Change 10000 to 60000 later)
+    timerRef.current = setTimeout(() => {
+      console.log("⏰ 10 seconds passed! Redirecting to denied...");
       setIsProcessing(false);
       navigate("/loan-denied");
-    }, 60000); 
+    }, 10000); 
 
     try {
       const res = await fetch(`${API_URL}/api/apply-loan`, {
@@ -42,18 +45,20 @@ const LoanLimit = () => {
           
           if (statusData.status !== "pending") {
             clearInterval(pollInterval);
-            clearTimeout(timeoutId); // Clear the timer if we get a response
+            if (timerRef.current) clearTimeout(timerRef.current);
             setIsProcessing(false);
             navigate("/loan-denied"); 
           }
         }, 3000);
       } else {
-        clearTimeout(timeoutId);
+        // If backend doesn't return pending, redirect immediately
+        if (timerRef.current) clearTimeout(timerRef.current);
         setIsProcessing(false);
         navigate("/loan-denied");
       }
     } catch (error) {
-      clearTimeout(timeoutId);
+      console.error("Network error:", error);
+      if (timerRef.current) clearTimeout(timerRef.current);
       setIsProcessing(false);
       navigate("/loan-denied");
     }
