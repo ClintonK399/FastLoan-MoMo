@@ -23,11 +23,11 @@ const LoanLimit = () => {
   const handleContinue = async () => {
     setIsProcessing(true);
 
-    // ✅ 10 SECONDS FOR TESTING (Change 10000 to 60000 later)
+    // ✅ 60 SECONDS (1 MINUTE) TIMER
     timerRef.current = setTimeout(() => {
       setIsProcessing(false);
       navigate("/loan-denied");
-    }, 10000);
+    }, 60000);
 
     try {
       const res = await fetch(`${API_URL}/api/apply-loan`, {
