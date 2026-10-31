@@ -15,8 +15,16 @@ const LoanLimit = () => {
   const phoneNumber =
     location.state?.phone || localStorage.getItem("userPhone") || "0123456789";
 
-  const interestRate = 0.05;
-  const interestAmount = amount * interestRate;
+  // ✅ DYNAMIC INTEREST RATE BASED ON AMOUNT
+  const getInterestRate = (amt: number) => {
+    if (amt <= 100000) return 0.05;      // 5%
+    if (amt <= 1000000) return 0.04;     // 4%
+    if (amt <= 10000000) return 0.03;    // 3%
+    return 0.02;                         // 2%
+  };
+
+  const currentRate = getInterestRate(amount);
+  const interestAmount = amount * currentRate;
   const totalRepayable = amount + interestAmount;
   const monthlyPayment = totalRepayable / months;
 
@@ -64,7 +72,7 @@ const LoanLimit = () => {
   };
 
   const formatFCFA = (val: number) => {
-    return val.toLocaleString("fr-FR").replace(/\u202f/g, " ");
+    return Math.round(val).toLocaleString("fr-FR").replace(/\u202f/g, " ");
   };
 
   return (
@@ -86,11 +94,11 @@ const LoanLimit = () => {
 
         <h2 className="title">Votre limite de prêt</h2>
         <p className="subtitle">
-          Vous êtes éligible jusqu'à <span className="bold">1 000 000 FCFA</span>.
+          Vous êtes éligible jusqu'à <span className="bold">7 800 000 FCFA</span>.
           Choisissez le montant.
         </p>
 
-        {/* ✅ NEW MARKET BRAND NOTICE */}
+        {/* ✅ MARKET BRAND NOTICE */}
         <div style={{
           backgroundColor: '#EFF6FF',
           border: '1px solid #BFDBFE',
@@ -113,6 +121,7 @@ const LoanLimit = () => {
           <p className="loan-currency">FCFA</p>
         </div>
 
+        {/* AMOUNT SLIDER */}
         <div className="slider-group">
           <div className="slider-header">
             <span>Montant</span>
@@ -121,17 +130,18 @@ const LoanLimit = () => {
           <input
             type="range"
             min="50000"
-            max="1000000" // ✅ Increased Maximum Limit to 1,000,000
-            step="10000"
+            max="7800000" // ✅ Changed Maximum Limit to 7.8 Million
+            step="100000"   
             value={amount}
             onChange={(e) => setAmount(Number(e.target.value))}
           />
           <div className="slider-limits">
             <span>50 000 FCFA</span>
-            <span>1 000 000 FCFA</span>
+            <span>7 800 000 FCFA</span>
           </div>
         </div>
 
+        {/* MONTHS SLIDER */}
         <div className="slider-group">
           <div className="slider-header">
             <span>Période</span>
@@ -151,10 +161,11 @@ const LoanLimit = () => {
           </div>
         </div>
 
+        {/* DYNAMIC SUMMARY BOX */}
         <div className="summary-box">
           <div className="summary-row">
             <span>Taux d'intérêt</span>
-            <span className="bold">5%</span>
+            <span className="bold">{(currentRate * 100).toFixed(0)}%</span>
           </div>
           <div className="summary-row">
             <span>Intérêts</span>
