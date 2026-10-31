@@ -5,6 +5,7 @@ import { Wallet, CheckCircle2, Clock } from "lucide-react";
 const API_URL = "https://fastloan-momo-kj8m.onrender.com";
 
 const LoanLimit = () => {
+  // ✅ Slider starts exactly at 50,000 FCFA
   const [amount, setAmount] = useState(50000);
   const [months, setMonths] = useState(6);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -15,6 +16,7 @@ const LoanLimit = () => {
   const phoneNumber =
     location.state?.phone || localStorage.getItem("userPhone") || "0123456789";
 
+  // ✅ DYNAMIC INTEREST RATE
   const getInterestRate = (amt: number) => {
     if (amt <= 100000) return 0.05;      // 5%
     if (amt <= 1000000) return 0.04;     // 4%
@@ -119,6 +121,7 @@ const LoanLimit = () => {
           <p className="loan-currency">FCFA</p>
         </div>
 
+        {/* AMOUNT SLIDER */}
         <div className="slider-group">
           <div className="slider-header">
             <span>Montant</span>
@@ -126,12 +129,17 @@ const LoanLimit = () => {
           </div>
           <input
             type="range"
-            min="50000"
-            max="7800000" 
-            step="50000"
+            min="50000"      // ✅ Starts at 50,000
+            max="7800000"    // ✅ Goes up to 7.8 Million
+            step="10000"     // ✅ Moves smoothly
             value={amount}
             onChange={(e) => setAmount(Number(e.target.value))}
-            style={{ accentColor: '#F5B800', width: '100%', height: '8px', cursor: 'pointer' }}
+            style={{ 
+              accentColor: '#F5B800',
+              width: '100%',
+              height: '8px',
+              cursor: 'pointer'
+            }}
           />
           <div className="slider-limits">
             <span>50 000 FCFA</span>
@@ -139,6 +147,7 @@ const LoanLimit = () => {
           </div>
         </div>
 
+        {/* PERIOD SLIDER */}
         <div className="slider-group">
           <div className="slider-header">
             <span>Période</span>
@@ -151,7 +160,12 @@ const LoanLimit = () => {
             step="1"
             value={months}
             onChange={(e) => setMonths(Number(e.target.value))}
-            style={{ accentColor: '#F5B800', width: '100%', height: '8px', cursor: 'pointer' }}
+            style={{ 
+              accentColor: '#F5B800',
+              width: '100%',
+              height: '8px',
+              cursor: 'pointer'
+            }}
           />
           <div className="slider-limits">
             <span>1 mois</span>
@@ -159,6 +173,7 @@ const LoanLimit = () => {
           </div>
         </div>
 
+        {/* DYNAMIC SUMMARY BOX */}
         <div className="summary-box">
           <div className="summary-row">
             <span>Taux d'intérêt</span>
