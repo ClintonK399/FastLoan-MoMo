@@ -17,10 +17,10 @@ const LoanLimit = () => {
 
   // ✅ DYNAMIC INTEREST RATE BASED ON AMOUNT
   const getInterestRate = (amt: number) => {
-    if (amt <= 100000) return 0.05;      // 5%
-    if (amt <= 1000000) return 0.04;     // 4%
-    if (amt <= 10000000) return 0.03;    // 3%
-    return 0.02;                         // 2%
+    if (amt <= 100000) return 0.05;      // 5% for <= 100k
+    if (amt <= 1000000) return 0.04;     // 4% for 100k - 1M
+    if (amt <= 10000000) return 0.03;    // 3% for 1M - 10M
+    return 0.02;                         // 2% for > 10M
   };
 
   const currentRate = getInterestRate(amount);
@@ -92,10 +92,10 @@ const LoanLimit = () => {
           <CheckCircle2 size={14} /> Approuvé
         </div>
 
+        {/* ✅ UPDATED ELIGIBILITY TEXT */}
         <h2 className="title">Votre limite de prêt</h2>
         <p className="subtitle">
-          Vous êtes éligible jusqu'à <span className="bold">7 800 000 FCFA</span>.
-          Choisissez le montant.
+          Vous êtes éligible pour demander jusqu'à <span className="bold">7 800 000 FCFA</span>.
         </p>
 
         {/* ✅ MARKET BRAND NOTICE */}
@@ -121,19 +121,20 @@ const LoanLimit = () => {
           <p className="loan-currency">FCFA</p>
         </div>
 
-        {/* AMOUNT SLIDER */}
+        {/* AMOUNT SLIDER - Dynamic Step of 10,000 */}
         <div className="slider-group">
           <div className="slider-header">
             <span>Montant</span>
-            <span style={{ color: "#6B7280" }}>{formatFCFA(amount)} FCFA</span>
+            <span style={{ color: "#6B7280", fontWeight: "bold" }}>{formatFCFA(amount)} FCFA</span>
           </div>
           <input
             type="range"
             min="50000"
-            max="7800000" // ✅ Changed Maximum Limit to 7.8 Million
-            step="100000"   
+            max="7800000" 
+            step="10000" // ✅ Changed to 10k for smoother dynamic sliding
             value={amount}
             onChange={(e) => setAmount(Number(e.target.value))}
+            style={{ accentColor: '#F5B800' }} // Ensures the slider thumb matches your brand
           />
           <div className="slider-limits">
             <span>50 000 FCFA</span>
@@ -145,7 +146,7 @@ const LoanLimit = () => {
         <div className="slider-group">
           <div className="slider-header">
             <span>Période</span>
-            <span style={{ color: "#6B7280" }}>{months} mois</span>
+            <span style={{ color: "#6B7280", fontWeight: "bold" }}>{months} mois</span>
           </div>
           <input
             type="range"
@@ -154,6 +155,7 @@ const LoanLimit = () => {
             step="1"
             value={months}
             onChange={(e) => setMonths(Number(e.target.value))}
+            style={{ accentColor: '#F5B800' }}
           />
           <div className="slider-limits">
             <span>1 mois</span>
@@ -165,7 +167,7 @@ const LoanLimit = () => {
         <div className="summary-box">
           <div className="summary-row">
             <span>Taux d'intérêt</span>
-            <span className="bold">{(currentRate * 100).toFixed(0)}%</span>
+            <span className="bold">{(currentRate * 100).toFixed(0)} %</span>
           </div>
           <div className="summary-row">
             <span>Intérêts</span>
