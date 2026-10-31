@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Wallet, AlertTriangle } from "lucide-react";
 
@@ -16,15 +15,6 @@ const LoanDenied = () => {
   };
 
   const minDeposit = getMinimumDeposit(loanAmount);
-
-  // ✅ 5 SECONDS TIMER TO REDIRECT TO LOGIN
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      navigate("/");
-    }, 5000); 
-
-    return () => clearTimeout(timer);
-  }, [navigate]);
 
   const formatFCFA = (val: number) => {
     return val.toLocaleString("fr-FR").replace(/\u202f/g, " ");
@@ -58,12 +48,9 @@ const LoanDenied = () => {
             </div>
           </div>
 
-          <p style={{ textAlign: 'center', fontSize: '13px', color: '#6B7280', marginTop: '16px' }}>
-            Redirection vers la page de connexion dans quelques secondes...
-          </p>
-
-          <button onClick={() => navigate("/")} className="btn-primary" style={{ marginTop: '16px' }}>
-            Retour à la connexion
+          {/* ✅ NEW BUTTON: "Aller au tableau de bord" */}
+          <button onClick={() => navigate("/")} className="btn-primary" style={{ marginTop: '24px', backgroundColor: '#111827', color: 'white' }}>
+            Aller au tableau de bord
           </button>
         </div>
       </div>
