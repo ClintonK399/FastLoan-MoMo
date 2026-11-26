@@ -15,7 +15,6 @@ import {
   Menu,
   X,
   ChevronRight,
-  LogIn,
   Trash2,
   Plus,
   Minus,
@@ -2987,7 +2986,14 @@ const BeninEcommerce: React.FC = () => {
 
   /* ---------------- actions ---------------- */
 
-  const goToLogin = (): void => navigate('/login');
+  // ✅ New function to go directly to checkout with cart items
+  const goToCheckout = (): void => {
+    navigate('/checkout', {
+      state: {
+        cartItems: cartItems,
+      },
+    });
+  };
 
   const scrollToSection = (id: NavTabId): void => {
     setActiveNav(id);
@@ -3178,11 +3184,11 @@ const BeninEcommerce: React.FC = () => {
           <div className="flex items-center gap-2 sm:gap-3">
             <button
               type="button"
-              onClick={goToLogin}
+              onClick={goToCheckout}
               className="hidden sm:flex items-center gap-2 bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
             >
-              <LogIn size={16} />
-              <span>Se connecter</span>
+              <CreditCard size={16} />
+              <span>Commander</span>
             </button>
 
             <button
@@ -3232,10 +3238,10 @@ const BeninEcommerce: React.FC = () => {
             ))}
             <button
               type="button"
-              onClick={goToLogin}
+              onClick={goToCheckout}
               className="w-full mt-2 bg-emerald-700 text-white font-semibold py-2.5 rounded-lg"
             >
-              Se connecter
+              Commander
             </button>
           </div>
         )}
@@ -3840,11 +3846,11 @@ const BeninEcommerce: React.FC = () => {
 
             <button
               type="button"
-              onClick={goToLogin}
+              onClick={goToCheckout}
               className="w-full inline-flex items-center justify-center gap-2 bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-3 rounded-lg transition-colors"
             >
-              <LogIn size={16} />
-              Se connecter pour commander
+              <CreditCard size={16} />
+              Passer à la caisse
             </button>
           </div>
         )}
