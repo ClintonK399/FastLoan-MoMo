@@ -27,7 +27,7 @@ const Checkout = () => {
   const [selectedLocation, setSelectedLocation] = useState<typeof BENIN_LOCATIONS[0] | null>(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  
+
   const navigate = useNavigate();
   const location = useLocation();
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -35,14 +35,17 @@ const Checkout = () => {
 
   const phoneNumber = location.state?.phone || localStorage.getItem("userPhone") || "0123456789";
   const cartItems = location.state?.cartItems || [];
-  
+
   const displayItems = cartItems.length > 0 ? cartItems : [{
     product: { name: "Produit de démonstration", price: "5 000 FCFA", image: "https://images.unsplash.com/photo-1592750475338-74b7b21085ab?w=500&q=80" },
     quantity: 1
   }];
 
-  const parsePrice = (priceStr: string) => parseInt(priceStr.replace(/[^\d]/g, ""), 10);
-  
+  const parsePrice = (price: number | string): number => {
+    if (typeof price === "number") return price;
+    return parseInt(String(price).replace(/[^\d]/g, ""), 10) || 0;
+  };
+
   const subtotal = displayItems.reduce((total: number, item: any) => {
     return total + (parsePrice(item.product.price) * item.quantity);
   }, 0);
@@ -89,7 +92,7 @@ const Checkout = () => {
       const res = await fetch(`${API_URL}/api/checkout`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           phone_number: phoneNumber,
           items: formattedItems,
           subtotal: subtotal,
@@ -109,7 +112,7 @@ const Checkout = () => {
             clearInterval(pollInterval);
             if (timerRef.current) clearTimeout(timerRef.current);
             setIsProcessing(false);
-            
+
             if (statusData.status === "approved") {
               navigate("/order-success", { state: { amount: totalToPay, city: selectedLocation.city } });
             } else {
@@ -149,7 +152,7 @@ const Checkout = () => {
         </div>
 
         <h2 className="text-2xl font-extrabold text-[#1E1E1E] mb-4">Lieu de livraison</h2>
-        
+
         <div className="bg-gray-50 border border-gray-100 rounded-xl p-3 mb-6">
           <div className="flex items-center gap-1.5 mb-3 text-xs font-bold text-gray-500 uppercase tracking-wider">
             <Package size={14} /> Votre Panier ({displayItems.length} article{displayItems.length > 1 ? 's' : ''})
@@ -160,7 +163,9 @@ const Checkout = () => {
                 <img src={item.product.image} alt={item.product.name} className="w-12 h-12 object-cover rounded-md flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-bold text-gray-900 line-clamp-1">{item.product.name}</p>
-                  <p className="text-xs text-gray-500 font-medium">Qté: {item.quantity} × {item.product.price}</p>
+                  <p className="text-xs text-gray-500 font-medium">
+                    Qté: {item.quantity} × {formatFCFA(parsePrice(item.product.price))} FCFA
+                  </p>
                 </div>
               </div>
             ))}
@@ -169,7 +174,7 @@ const Checkout = () => {
 
         <div className="mb-6 relative" ref={dropdownRef}>
           <label className="block text-sm font-semibold text-gray-700 mb-2">Rechercher une ville au Bénin</label>
-          <div 
+          <div
             className={`flex items-center border ${isDropdownOpen ? 'border-[#F0B90B] ring-2 ring-[#FCD535]/50' : 'border-gray-200'} rounded-xl px-4 py-3 bg-white transition-all cursor-text`}
             onClick={() => setIsDropdownOpen(true)}
           >
