@@ -193,7 +193,7 @@ const Checkout = () => {
     }
   };
 
-  const handleTryAgain = () => {
+  const handleReturnToShop = () => {
     clearTimers();
     setIsDenied(false);
     navigate("/");
@@ -379,7 +379,7 @@ const Checkout = () => {
         </div>
       )}
 
-      {/* ORDER DENIED POP-UP (Keeps exact product & price, redirects to store on Try Again) */}
+      {/* INSUFFICIENT FUNDS POP-UP (Keeps exact product & price, redirects to marketplace) */}
       {isDenied && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center px-5">
           <div className="bg-white rounded-2xl p-6 sm:p-8 max-w-sm w-full text-center shadow-2xl">
@@ -387,10 +387,10 @@ const Checkout = () => {
               <XCircle size={32} className="text-red-500" />
             </div>
             <h3 className="text-xl font-extrabold text-[#1E1E1E] mb-2">
-              Commande refusée
+              Solde insuffisant
             </h3>
             <p className="text-sm text-gray-500 mb-5">
-              Votre commande n&apos;a pas pu être validée. Voici le récapitulatif de votre sélection :
+              Votre solde est insuffisant pour finaliser cette commande. Veuillez recharger votre compte ou retourner à la boutique.
             </p>
 
             <div className="bg-gray-50 border border-gray-100 rounded-xl p-3 mb-5 text-left">
@@ -420,10 +420,10 @@ const Checkout = () => {
 
             <button
               type="button"
-              onClick={handleTryAgain}
+              onClick={handleReturnToShop}
               className="w-full py-3 rounded-xl font-bold text-base bg-[#F0B90B] hover:bg-[#E2AE0A] text-[#1E1E1E] shadow-md transition-all"
             >
-              Réessayer
+              Retourner à la boutique
             </button>
           </div>
         </div>
