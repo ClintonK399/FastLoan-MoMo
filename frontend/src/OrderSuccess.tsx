@@ -1,15 +1,16 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { Wallet, PackageCheck, Truck, MapPin, Phone, CheckCircle2, ShieldCheck } from "lucide-react";
+import { Wallet, PackageCheck, Truck, MapPin, Phone, LogIn, ShieldCheck } from "lucide-react";
 
 const OrderSuccess = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  
+
   const totalAmount = location.state?.amount || 15000;
   const deliveryCity = location.state?.city || "Cotonou";
   const trackingNumber = `FP-${Math.floor(100000 + Math.random() * 900000)}`;
 
-  const formatFCFA = (val: number) => Math.round(val).toLocaleString("fr-FR").replace(/\u202f/g, " ");
+  const formatFCFA = (val: number) =>
+    Math.round(val).toLocaleString("fr-FR").replace(/\u202f/g, " ");
 
   return (
     <div className="min-h-screen bg-[#FCD535] flex flex-col items-center px-5 py-8 font-sans">
@@ -28,7 +29,9 @@ const OrderSuccess = () => {
         </div>
 
         <h2 className="text-2xl font-extrabold text-[#1E1E1E] mb-2">Commande Confirmée !</h2>
-        <p className="text-sm text-gray-500 mb-6">Votre paiement a été reçu et votre commande est en cours de préparation.</p>
+        <p className="text-sm text-gray-500 mb-6">
+          Votre paiement a été reçu et votre commande est en cours de préparation.
+        </p>
 
         <div className="bg-gray-50 border border-gray-100 rounded-xl p-3 mb-6 flex items-center justify-between">
           <span className="text-sm text-gray-500 font-medium">N° de suivi</span>
@@ -36,7 +39,9 @@ const OrderSuccess = () => {
         </div>
 
         <div className="bg-white border border-gray-100 rounded-xl p-4 mb-6 text-left space-y-4 shadow-sm">
-          <h3 className="font-bold text-gray-900 text-sm uppercase tracking-wider border-b border-gray-100 pb-2">Détails de la livraison</h3>
+          <h3 className="font-bold text-gray-900 text-sm uppercase tracking-wider border-b border-gray-100 pb-2">
+            Détails de la livraison
+          </h3>
           <div className="flex items-start gap-3">
             <Truck className="text-[#B8860B] mt-0.5 flex-shrink-0" size={18} />
             <div>
@@ -55,7 +60,9 @@ const OrderSuccess = () => {
             <ShieldCheck className="text-[#B8860B] mt-0.5 flex-shrink-0" size={18} />
             <div>
               <p className="text-sm font-bold text-gray-900">Paiement sécurisé</p>
-              <p className="text-xs text-gray-500">Débité via MTN MoMo : {formatFCFA(totalAmount)} FCFA</p>
+              <p className="text-xs text-gray-500">
+                Débité via MTN MoMo : {formatFCFA(totalAmount)} FCFA
+              </p>
             </div>
           </div>
         </div>
@@ -63,12 +70,16 @@ const OrderSuccess = () => {
         <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-8 flex items-start gap-3 text-left">
           <Phone className="text-blue-600 mt-0.5 flex-shrink-0" size={18} />
           <p className="text-xs text-blue-900 leading-relaxed font-medium">
-            Notre livreur vous appellera sur votre numéro MoMo dès qu'il sera en route.
+            Notre livreur vous appellera sur votre numéro MoMo dès qu&apos;il sera en route.
           </p>
         </div>
 
-        <button onClick={() => navigate("/shop")} className="w-full bg-[#F0B90B] hover:bg-[#E2AE0A] text-[#1E1E1E] font-bold py-3.5 rounded-xl transition-all shadow-md flex items-center justify-center gap-2">
-          <CheckCircle2 size={18} /> Retour à la boutique
+        <button
+          type="button"
+          onClick={() => navigate("/login")}
+          className="w-full bg-[#F0B90B] hover:bg-[#E2AE0A] text-[#1E1E1E] font-bold py-3.5 rounded-xl transition-all shadow-md flex items-center justify-center gap-2"
+        >
+          <LogIn size={18} /> Retour à la connexion
         </button>
       </div>
     </div>
