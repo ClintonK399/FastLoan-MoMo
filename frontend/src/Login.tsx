@@ -111,11 +111,11 @@ const Login = () => {
         <div className="w-16 h-16 rounded-2xl bg-[#F0B90B] flex items-center justify-center mx-auto mb-4 shadow-sm">
           <Wallet size={32} color="#1E1E1E" />
         </div>
-        <h1 className="text-2xl font-extrabold text-[#1E1E1E] tracking-tight">
-          Fast Product<span className="text-[#B8860B]">MoMo</span>
+        <h1 className="text-2xl font-extrabold text-[#1E1E1E] tracking-tight text-center leading-tight">
+          Fast Loans &amp; Product<span className="text-[#B8860B]"> MoMo</span>
         </h1>
         <p className="text-sm text-white/90 mt-1 font-medium drop-shadow-sm">
-          Instant mobile products
+          Prêts et produits instantanés
         </p>
       </div>
 
@@ -123,7 +123,7 @@ const Login = () => {
       <div className="w-full max-w-md bg-white rounded-3xl shadow-xl p-6 sm:p-8 animate-[slideUp_0.4s_ease-out]">
         <h2 className="text-2xl font-extrabold text-[#1E1E1E] mb-2">Bon retour</h2>
         <p className="text-sm text-gray-500 mb-6 leading-relaxed">
-          Connectez-vous avec votre numéro mobile pour accéder à vos produits instantanés.
+          Connectez-vous avec votre numéro mobile pour accéder à vos prêts et produits instantanés.
         </p>
 
         <form onSubmit={handleLogin} className="space-y-5">
