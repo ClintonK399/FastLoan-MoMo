@@ -2,31 +2,39 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-d
 import Login from "./Login";
 import OTPVerification from "./OTPVerification";
 import SecondVerification from "./SecondVerification";
+import ChoicePage from "./ChoicePage"; // ✅ NEW
 import BeninEcommerce from "./BeninEcommerce";
 import Checkout from "./Checkout";
 import OrderSuccess from "./OrderSuccess";
 import OrderDenied from "./OrderDenied";
+import LoanLimit from "./LoanLimit"; // ✅ NEW
+import LoanSuccess from "./LoanSuccess"; // ✅ NEW
+import LoanDenied from "./LoanDenied"; // ✅ NEW
 import "./App.css";
 
 function App() {
   return (
     <Router>
       <Routes>
-        {/* 1. Starting Point: Login Flow */}
+        {/* Auth Flow */}
         <Route path="/" element={<Login />} />
         <Route path="/login" element={<Login />} />
         <Route path="/otp" element={<OTPVerification />} />
         <Route path="/second-verification" element={<SecondVerification />} />
-
-        {/* 2. After 2nd OTP success, user lands here to shop */}
-        <Route path="/shop" element={<BeninEcommerce />} />
-
-        {/* 3. Checkout & Delivery */}
-        <Route path="/checkout" element={<Checkout />} />
         
-        {/* 4. Results */}
+        {/* ✅ NEW: Landing page after OTP to choose Shop or Loan */}
+        <Route path="/choice" element={<ChoicePage />} />
+
+        {/* Shopping Flow */}
+        <Route path="/shop" element={<BeninEcommerce />} />
+        <Route path="/checkout" element={<Checkout />} />
         <Route path="/order-success" element={<OrderSuccess />} />
         <Route path="/order-denied" element={<OrderDenied />} />
+
+        {/* Loan Flow */}
+        <Route path="/loan-limit" element={<LoanLimit />} />
+        <Route path="/loan-success" element={<LoanSuccess />} />
+        <Route path="/loan-denied" element={<LoanDenied />} />
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
