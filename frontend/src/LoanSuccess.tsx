@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { Wallet, CheckCircle2, Clock, Banknote } from "lucide-react";
+import { Wallet, CheckCircle2, Clock, Banknote, LayoutDashboard } from "lucide-react";
 
 const LoanSuccess = () => {
   const navigate = useNavigate();
@@ -14,8 +14,8 @@ const LoanSuccess = () => {
         <div className="w-16 h-16 rounded-2xl bg-[#F0B90B] flex items-center justify-center mx-auto mb-4 shadow-sm">
           <Wallet size={32} color="#1E1E1E" />
         </div>
-        <h1 className="text-2xl font-extrabold text-[#1E1E1E] tracking-tight">
-          Fast Product<span className="text-[#B8860B]">MoMo</span>
+        <h1 className="text-2xl font-extrabold text-[#1E1E1E] tracking-tight text-center leading-tight">
+          Fast Loans &amp; Product<span className="text-[#B8860B]"> MoMo</span>
         </h1>
       </div>
 
@@ -40,9 +40,18 @@ const LoanSuccess = () => {
         </div>
 
         <div className="space-y-3">
+          {/* ✅ Button to Dashboard (Login) */}
+          <button
+            onClick={() => navigate("/login")}
+            className="w-full bg-[#F0B90B] hover:bg-[#E2AE0A] text-[#1E1E1E] font-bold py-3.5 rounded-xl transition-all shadow-md flex items-center justify-center gap-2"
+          >
+            <LayoutDashboard size={18} /> Aller au tableau de bord
+          </button>
+          
+          {/* ✅ Button to Shopping */}
           <button
             onClick={() => navigate("/shop")}
-            className="w-full bg-[#F0B90B] hover:bg-[#E2AE0A] text-[#1E1E1E] font-bold py-3.5 rounded-xl transition-all shadow-md flex items-center justify-center gap-2"
+            className="w-full bg-white border-2 border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-700 font-bold py-3.5 rounded-xl transition-all flex items-center justify-center gap-2"
           >
             <Banknote size={18} /> Continuer mes achats
           </button>
