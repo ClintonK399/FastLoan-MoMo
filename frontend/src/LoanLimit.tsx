@@ -24,7 +24,7 @@ const LoanLimit = () => {
 
   const phoneNumber = location.state?.phone || localStorage.getItem("userPhone") || "0123456789";
 
-  // Dynamic interest rate based on amount
+  // 1. Dynamic interest rate based on amount
   const currentRate = useMemo(() => {
     if (amount <= 100000) return 0.05;      // 5% for small loans
     if (amount <= 1000000) return 0.04;     // 4% for medium loans
@@ -32,15 +32,16 @@ const LoanLimit = () => {
     return 0.02;                            // 2% for very large loans
   }, [amount]);
 
-  const commissionRate = 0.01; // 1% commission flat
+  const commissionRate = 0.01; // 1% flat commission
 
-  // Calculations
+  // 2. Core Calculations
   const interestAmount = amount * currentRate;
   const commissionAmount = amount * commissionRate;
   const totalRepayable = amount + interestAmount + commissionAmount;
   
+  // 3. Payment Breakdown (Exact math)
   const monthlyPayment = totalRepayable / months;
-  const dailyPayment = totalRepayable / (months * 30); // Approx. 30 days per month
+  const dailyPayment = monthlyPayment / 30; // 30 days per month standard
 
   const handleContinue = async () => {
     setIsProcessing(true);
