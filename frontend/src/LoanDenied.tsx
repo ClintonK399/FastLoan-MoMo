@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import { Wallet, XCircle, ArrowLeft, CreditCard } from "lucide-react";
+import { XCircle, CreditCard, ShieldCheck } from "lucide-react";
 
 const LoanDenied = () => {
   const navigate = useNavigate();
@@ -47,18 +47,16 @@ const LoanDenied = () => {
 
         <div className="space-y-3">
           <button
-            onClick={() => navigate("/loan-limit")}
+            onClick={() => navigate("/login")}
             className="w-full bg-[#F0B90B] hover:bg-[#E2AE0A] text-[#1E1E1E] font-bold py-3.5 rounded-xl transition-all shadow-md flex items-center justify-center gap-2"
           >
-            <ArrowLeft size={18} /> Réessayer
+            <ShieldCheck size={18} /> J'ai effectué le dépôt
           </button>
           
-          <button
-            onClick={() => navigate("/shop")}
-            className="w-full bg-white border-2 border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-700 font-bold py-3 rounded-xl transition-all"
-          >
-            Retour à la boutique
-          </button>
+          <div className="flex items-center justify-center gap-2 text-xs text-gray-500 mt-4">
+            <CreditCard size={14} />
+            <span>Le système vérifiera votre dépôt automatiquement</span>
+          </div>
         </div>
       </div>
 
